@@ -1,2 +1,2 @@
-export * from "./HeaderUserProfile"
-export * from "./ContinueWithGoogle"
+export * from './HeaderUserProfile';
+export * from './ContinueWithGoogle';

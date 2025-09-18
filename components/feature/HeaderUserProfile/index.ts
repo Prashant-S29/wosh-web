@@ -1,1 +1,1 @@
-export * from "./HeaderUserProfile"
+export * from './HeaderUserProfile';

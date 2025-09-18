@@ -57,21 +57,18 @@ export const HeaderUserProfile: React.FC<Props> = ({ token }) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={isLoading}>
-        <Button variant='ghost' className='relative h-8 w-8 rounded-full'>
-          <Avatar className='h-8 w-8'>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
             {sessionData?.data?.user && sessionData?.data?.user.image && (
               <AvatarImage
                 src={sessionData?.data?.user && sessionData?.data?.user.image}
-                alt='User avatar'
+                alt="User avatar"
               />
             )}
             <AvatarFallback>
               {isLoading
                 ? 'W.'
-                : (
-                    (sessionData?.data?.user && sessionData?.data?.user.name) ||
-                    'W.'
-                  )
+                : ((sessionData?.data?.user && sessionData?.data?.user.name) || 'W.')
                     .charAt(0)
                     .toUpperCase()}
             </AvatarFallback>
@@ -79,16 +76,14 @@ export const HeaderUserProfile: React.FC<Props> = ({ token }) => {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className='w-48 mt-2' align='end' forceMount>
-        <DropdownMenuLabel className='font-normal'>
-          <div className='flex flex-col space-y-1'>
-            <p className='text-sm font-medium leading-none line-clamp-1'>
-              {(sessionData?.data?.user && sessionData?.data?.user.name) ||
-                'na'}
+      <DropdownMenuContent className="mt-2 w-48" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="line-clamp-1 text-sm leading-none font-medium">
+              {(sessionData?.data?.user && sessionData?.data?.user.name) || 'na'}
             </p>
-            <p className='text-sm leading-none text-muted-foreground line-clamp-1'>
-              {(sessionData?.data?.user && sessionData?.data?.user.email) ||
-                'na'}
+            <p className="text-muted-foreground line-clamp-1 text-sm leading-none">
+              {(sessionData?.data?.user && sessionData?.data?.user.email) || 'na'}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -105,11 +100,11 @@ export const HeaderUserProfile: React.FC<Props> = ({ token }) => {
               <DropdownMenuItem
                 key={option.value}
                 onClick={() => setTheme(option.value)}
-                className='cursor-pointer'
+                className="cursor-pointer"
               >
-                <Icon className='mr-2 h-4 w-4' />
+                <Icon className="mr-2 h-4 w-4" />
                 <span>{option.label}</span>
-                {isSelected && <Check className='ml-auto h-4 w-4' />}
+                {isSelected && <Check className="ml-auto h-4 w-4" />}
               </DropdownMenuItem>
             );
           })}
@@ -117,8 +112,8 @@ export const HeaderUserProfile: React.FC<Props> = ({ token }) => {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem className='cursor-pointer' onClick={handleLogout}>
-          <LogOut className='mr-2 h-4 w-4' />
+        <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
           <span>Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

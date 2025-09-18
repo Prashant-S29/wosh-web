@@ -3,7 +3,6 @@ export type LoginRequest = {
   password: string;
 };
 
-
 export type SignupRequest = {
   name: string;
   email: string;

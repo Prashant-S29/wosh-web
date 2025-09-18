@@ -1,10 +1,6 @@
 import { getFromCookie } from '@/lib/utils.cookies';
 import { SafeApiResponse } from '@/types/api';
-import {
-  useMutation,
-  UseMutationOptions,
-  UseMutationResult,
-} from '@tanstack/react-query';
+import { useMutation, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
 
 export type TypedMutationOptions<TRequest, TResponse> = Omit<
   UseMutationOptions<SafeApiResponse<TResponse>, never, TRequest>,
@@ -14,8 +10,8 @@ export type TypedMutationOptions<TRequest, TResponse> = Omit<
   method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
   authRequired?: boolean;
-  transformRequest?: (data: TRequest) => any;
-  transformResponse?: (data: any) => TResponse;
+  transformRequest?: (data: TRequest) => unknown;
+  transformResponse?: (data: unknown) => TResponse;
 };
 
 export function useTypedMutation<TRequest, TResponse>(
@@ -49,43 +45,45 @@ export function useTypedMutation<TRequest, TResponse>(
           }
         }
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}${endpoint}`,
-          {
-            method,
-            headers: requestHeaders,
-            body: JSON.stringify(requestBody),
-          },
-        );
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}${endpoint}`, {
+          method,
+          headers: requestHeaders,
+          body: JSON.stringify(requestBody),
+        });
 
-        const responseData = await response.json();
+        const responseData: unknown = await response.json();
         if (!response.ok) {
+          // Type guard for error response
+          const errorResponse = responseData as { message?: string };
           return {
             data: null,
-            error: responseData.message || `HTTP ${response.status} error`,
-            message: responseData.message || 'An error occurred',
+            error: errorResponse.message || `HTTP ${response.status} error`,
+            message: errorResponse.message || 'An error occurred',
           };
         }
 
-        if (
-          responseData &&
-          typeof responseData === 'object' &&
-          'data' in responseData
-        ) {
+        // Type guard for successful response with data property
+        if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+          const apiResponse = responseData as {
+            data: unknown;
+            error?: string | null;
+            message?: string;
+          };
+
           const transformedData =
-            transformResponse && responseData.data
-              ? transformResponse(responseData.data)
-              : responseData.data;
+            transformResponse && apiResponse.data
+              ? transformResponse(apiResponse.data)
+              : (apiResponse.data as TResponse);
 
           return {
             data: transformedData,
-            error: responseData.error,
-            message: responseData.message,
+            error: apiResponse.error || null,
+            message: apiResponse.message || 'Success',
           };
         } else {
           const transformedData = transformResponse
             ? transformResponse(responseData)
-            : responseData;
+            : (responseData as TResponse);
 
           return {
             data: transformedData,
@@ -95,8 +93,7 @@ export function useTypedMutation<TRequest, TResponse>(
         }
       } catch (error) {
         // Network error or parsing error
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error occurred';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
         return {
           data: null,

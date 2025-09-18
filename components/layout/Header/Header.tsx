@@ -17,44 +17,38 @@ export const Header: React.FC = () => {
   const { isLoading, token } = useCheckAuthClient();
 
   return (
-    <header className='fixed w-full'>
-      <div className='container py-8 mx-auto flex justify-between items-center'>
+    <header className="fixed w-full">
+      <div className="container mx-auto flex items-center justify-between py-8">
         <div>
-          <Link href='/' className='text-2xl font-semibold'>
+          <Link href="/" className="text-2xl font-semibold">
             Wosh.
           </Link>
         </div>
-        <div className='flex items-center'>
-          <nav className='flex items-center gap-5'>
+        <div className="flex items-center">
+          <nav className="flex items-center gap-5">
             {navLinks.map((link) => (
-              <Button key={link.name} variant='ghost' asChild>
+              <Button key={link.name} variant="ghost" asChild>
                 <Link href={link.href}>{link.name}</Link>
               </Button>
             ))}
           </nav>
 
-          <div className='w-[1px] h-5 bg-foreground ml-5 mr-8' />
+          <div className="bg-foreground mr-8 ml-5 h-5 w-[1px]" />
 
           {token ? (
-            <div className='flex gap-5 items-center'>
-              <Button variant='default' asChild size='sm'>
-                <Link href='/dashboard'>Dashboard</Link>
+            <div className="flex items-center gap-5">
+              <Button variant="default" asChild size="sm">
+                <Link href="/dashboard">Dashboard</Link>
               </Button>
               <HeaderUserProfile token={token} />
             </div>
           ) : (
-            <div className='flex gap-5 items-center'>
-              <Button
-                variant='secondary'
-                asChild
-                size='sm'
-                disabled={isLoading}
-                className='h-9'
-              >
-                <Link href='/login'>Login</Link>
+            <div className="flex items-center gap-5">
+              <Button variant="secondary" asChild size="sm" disabled={isLoading} className="h-9">
+                <Link href="/login">Login</Link>
               </Button>
-              <Button variant='default' asChild size='sm' disabled={isLoading}>
-                <Link href='/dashboard'>Start your project</Link>
+              <Button variant="default" asChild size="sm" disabled={isLoading}>
+                <Link href="/dashboard">Start your project</Link>
               </Button>
             </div>
           )}

@@ -21,7 +21,6 @@ export const checkAuthServer = async ({
 
     return {
       isAuthenticated,
-      data: {},
       token,
     };
   } catch (error) {
@@ -33,7 +32,6 @@ export const checkAuthServer = async ({
 
     return {
       isAuthenticated: false,
-      data: {},
       token: null,
     };
   }

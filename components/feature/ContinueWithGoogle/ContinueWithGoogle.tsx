@@ -6,7 +6,7 @@ import { SocialIcons } from '@/public/icons';
 
 export const ContinueWithGoogle: React.FC = () => {
   return (
-    <Button variant='outline' className='w-full'>
+    <Button variant="outline" className="w-full">
       <SocialIcons.GoogleIcon /> Continue with Google
     </Button>
   );

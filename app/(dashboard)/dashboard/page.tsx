@@ -12,7 +12,7 @@ import { useTypedQuery } from '@/hooks';
 import { GetSessionResponse } from '@/types/api';
 
 const Dashboard: React.FC = () => {
-  const { token, isLoading, isAuthenticated } = useCheckAuthClient();
+  const { token, isLoading } = useCheckAuthClient();
 
   const { data: sessionData } = useTypedQuery<GetSessionResponse>({
     endpoint: '/api/auth/session',
@@ -21,8 +21,8 @@ const Dashboard: React.FC = () => {
   });
 
   return (
-    <main className='flex min-h-screen flex-col items-center justify-center'>
-      <h1 className='text-2xl font-semibold'>Wosh. Dashboard</h1>
+    <main className="flex min-h-screen flex-col items-center justify-center">
+      <h1 className="text-2xl font-semibold">Wosh. Dashboard</h1>
 
       {isLoading ? (
         <p>loading...</p>

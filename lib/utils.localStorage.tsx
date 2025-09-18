@@ -8,13 +8,15 @@ export const saveToLocalStorage = <T,>(key: string, value: T) => {
 };
 
 // Gets data from local storage
-export const getFromLocalStorage = <T,>(key: string) => {
+export const getFromLocalStorage = <T,>(key: string): T | null => {
   try {
     const value = localStorage.getItem(key);
     if (value) {
       return JSON.parse(value) as T;
     }
+    return null;
   } catch (error) {
     console.error(error);
+    return null;
   }
 };
