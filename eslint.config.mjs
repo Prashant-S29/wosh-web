@@ -13,10 +13,14 @@ const eslintConfig = [
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
+    plugins: {
+      '@next/next': (await import('@next/eslint-plugin-next')).default,
+    },
     rules: {
       'no-debugger': 'error',
       'prefer-const': 'error',
       'no-var': 'error',
+      '@next/next/no-img-element': 'warn',
     },
   },
   {
