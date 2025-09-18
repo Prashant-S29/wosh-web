@@ -1,10 +1,6 @@
 import { getFromCookie } from '@/lib/utils.cookies';
 import { SafeApiResponse } from '@/types/api';
-import {
-  useMutation,
-  UseMutationOptions,
-  UseMutationResult,
-} from '@tanstack/react-query';
+import { useMutation, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
 
 export type TypedMutationOptions<TRequest, TResponse> = Omit<
   UseMutationOptions<SafeApiResponse<TResponse>, never, TRequest>,
@@ -49,14 +45,11 @@ export function useTypedMutation<TRequest, TResponse>(
           }
         }
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}${endpoint}`,
-          {
-            method,
-            headers: requestHeaders,
-            body: JSON.stringify(requestBody),
-          },
-        );
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}${endpoint}`, {
+          method,
+          headers: requestHeaders,
+          body: JSON.stringify(requestBody),
+        });
 
         const responseData = await response.json();
         if (!response.ok) {
@@ -67,11 +60,7 @@ export function useTypedMutation<TRequest, TResponse>(
           };
         }
 
-        if (
-          responseData &&
-          typeof responseData === 'object' &&
-          'data' in responseData
-        ) {
+        if (responseData && typeof responseData === 'object' && 'data' in responseData) {
           const transformedData =
             transformResponse && responseData.data
               ? transformResponse(responseData.data)
@@ -95,8 +84,7 @@ export function useTypedMutation<TRequest, TResponse>(
         }
       } catch (error) {
         // Network error or parsing error
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error occurred';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
         return {
           data: null,

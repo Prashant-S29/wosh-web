@@ -18,13 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 // components
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -40,7 +34,6 @@ import { saveToCookie } from '@/lib/utils.cookies';
 import { useRouter } from 'next/navigation';
 
 export const SignupForm: React.FC = () => {
-
   const router = useRouter();
 
   // mutation
@@ -79,9 +72,9 @@ export const SignupForm: React.FC = () => {
   };
 
   return (
-    <div className='w-full max-w-[400px] flex flex-col gap-3 '>
-      <Button asChild variant='secondary' className='w-fit border'>
-        <Link href='/'>Home</Link>
+    <div className="flex w-full max-w-[400px] flex-col gap-3">
+      <Button asChild variant="secondary" className="w-fit border">
+        <Link href="/">Home</Link>
       </Button>
 
       <Card>
@@ -91,17 +84,17 @@ export const SignupForm: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name='name'
+                name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
                       <Input
-                        type='text'
-                        placeholder='wosh-member'
+                        type="text"
+                        placeholder="wosh-member"
                         {...field}
                         disabled={form.formState.isSubmitting}
                       />
@@ -113,14 +106,14 @@ export const SignupForm: React.FC = () => {
 
               <FormField
                 control={form.control}
-                name='email'
+                name="email"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input
-                        type='email'
-                        placeholder='m@example.com'
+                        type="email"
+                        placeholder="m@example.com"
                         {...field}
                         disabled={form.formState.isSubmitting}
                       />
@@ -132,40 +125,30 @@ export const SignupForm: React.FC = () => {
 
               <FormField
                 control={form.control}
-                name='password'
+                name="password"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type='password'
-                        {...field}
-                        disabled={form.formState.isSubmitting}
-                      />
+                      <Input type="password" {...field} disabled={form.formState.isSubmitting} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className='flex flex-col gap-3'>
-                <Button
-                  type='submit'
-                  className='w-full'
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting
-                    ? 'Creating account...'
-                    : 'Sign up'}
+              <div className="flex flex-col gap-3">
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? 'Creating account...' : 'Sign up'}
                 </Button>
                 <ContinueWithGoogle />
               </div>
             </form>
           </Form>
 
-          <div className='mt-4 text-center text-sm'>
+          <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
-            <Link href='/login' className='underline underline-offset-4'>
+            <Link href="/login" className="underline underline-offset-4">
               Sign in
             </Link>
           </div>

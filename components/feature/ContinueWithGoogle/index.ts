@@ -1,1 +1,1 @@
-export * from "./ContinueWithGoogle"
+export * from './ContinueWithGoogle';

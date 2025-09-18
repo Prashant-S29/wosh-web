@@ -1,2 +1,2 @@
-export * from "./schema.login"
-export * from "./schema.signup"
+export * from './schema.login';
+export * from './schema.signup';

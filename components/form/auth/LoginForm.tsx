@@ -21,13 +21,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 // components
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -75,9 +69,9 @@ export const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className='w-full max-w-[400px] flex flex-col gap-3 '>
-      <Button asChild variant='secondary' className='w-fit border'>
-        <Link href='/'>Home</Link>
+    <div className="flex w-full max-w-[400px] flex-col gap-3">
+      <Button asChild variant="secondary" className="w-fit border">
+        <Link href="/">Home</Link>
       </Button>
 
       <Card>
@@ -87,17 +81,17 @@ export const LoginForm: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name='email'
+                name="email"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
                       <Input
-                        type='email'
-                        placeholder='m@example.com'
+                        type="email"
+                        placeholder="m@example.com"
                         disabled={form.formState.isSubmitting}
                         {...field}
                       />
@@ -109,36 +103,25 @@ export const LoginForm: React.FC = () => {
 
               <FormField
                 control={form.control}
-                name='password'
+                name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className='flex items-center justify-between'>
+                    <div className="flex items-center justify-between">
                       <FormLabel>Password</FormLabel>
-                      <Link
-                        href='#'
-                        className='text-sm underline-offset-4 hover:underline'
-                      >
+                      <Link href="#" className="text-sm underline-offset-4 hover:underline">
                         Forgot your password?
                       </Link>
                     </div>
                     <FormControl>
-                      <Input
-                        type='password'
-                        disabled={form.formState.isSubmitting}
-                        {...field}
-                      />
+                      <Input type="password" disabled={form.formState.isSubmitting} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className='flex flex-col gap-3'>
-                <Button
-                  type='submit'
-                  className='w-full'
-                  disabled={form.formState.isSubmitting}
-                >
+              <div className="flex flex-col gap-3">
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
                 </Button>
                 <ContinueWithGoogle />
@@ -146,9 +129,9 @@ export const LoginForm: React.FC = () => {
             </form>
           </Form>
 
-          <div className='mt-4 text-center text-sm'>
+          <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
-            <Link href='/signup' className='underline underline-offset-4'>
+            <Link href="/signup" className="underline underline-offset-4">
               Sign up
             </Link>
           </div>

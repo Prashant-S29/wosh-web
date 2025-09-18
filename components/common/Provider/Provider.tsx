@@ -48,16 +48,14 @@ export const Provider: React.FC<Props> = ({ children }) => {
   return (
     <QueryClientProvider client={queryClient}>
       <NextThemesProvider
-        attribute='class'
-        defaultTheme='dark'
+        attribute="class"
+        defaultTheme="dark"
         enableSystem={true}
         disableTransitionOnChange
       >
         <Toaster visibleToasts={3} />
         {children}
-        {process.env.NODE_ENV === 'development' && (
-          <ReactQueryDevtools initialIsOpen={false} />
-        )}
+        {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
       </NextThemesProvider>
     </QueryClientProvider>
   );

@@ -17,11 +17,7 @@ const defaultOptions: CookieOptions = {
 };
 
 // Saves data to cookies (client-side)
-export const saveToCookie = <T,>(
-  key: string,
-  value: T,
-  options: CookieOptions = {},
-): void => {
+export const saveToCookie = <T,>(key: string, value: T, options: CookieOptions = {}): void => {
   try {
     if (typeof window === 'undefined') {
       console.warn('saveToCookie called on server side');
@@ -30,12 +26,9 @@ export const saveToCookie = <T,>(
 
     const mergedOptions = { ...defaultOptions, ...options };
 
-    const serializedValue =
-      typeof value === 'string' ? value : JSON.stringify(value);
+    const serializedValue = typeof value === 'string' ? value : JSON.stringify(value);
 
-    let cookieString = `${encodeURIComponent(key)}=${encodeURIComponent(
-      serializedValue,
-    )}`;
+    let cookieString = `${encodeURIComponent(key)}=${encodeURIComponent(serializedValue)}`;
 
     // Handle expires option
     if (mergedOptions.expires) {
@@ -125,9 +118,7 @@ export const removeCookie = (
     }
 
     const mergedOptions = { ...defaultOptions, ...options };
-    let cookieString = `${encodeURIComponent(
-      key,
-    )}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    let cookieString = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
 
     if (mergedOptions.domain) {
       cookieString += `; domain=${mergedOptions.domain}`;

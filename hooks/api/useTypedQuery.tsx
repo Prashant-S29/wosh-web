@@ -1,10 +1,6 @@
 import { getFromCookie } from '@/lib/utils.cookies';
 import { SafeApiResponse } from '@/types/api';
-import {
-  useQuery,
-  UseQueryOptions,
-  UseQueryResult,
-} from '@tanstack/react-query';
+import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
 
 export type TypedQueryOptions<TResponse> = Omit<
   UseQueryOptions<SafeApiResponse<TResponse>, never>,
@@ -36,9 +32,7 @@ export function useTypedQuery<TResponse>(
   return useQuery<SafeApiResponse<TResponse>, never>({
     queryFn: async (): Promise<SafeApiResponse<TResponse>> => {
       try {
-        const url = new URL(
-          `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}${endpoint}`,
-        );
+        const url = new URL(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}${endpoint}`);
 
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
@@ -75,11 +69,7 @@ export function useTypedQuery<TResponse>(
           };
         }
 
-        if (
-          responseData &&
-          typeof responseData === 'object' &&
-          'data' in responseData
-        ) {
+        if (responseData && typeof responseData === 'object' && 'data' in responseData) {
           const transformedData =
             transformResponse && responseData.data
               ? transformResponse(responseData.data)
@@ -102,8 +92,7 @@ export function useTypedQuery<TResponse>(
           };
         }
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error occurred';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
         return {
           data: null,
