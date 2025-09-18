@@ -11,7 +11,7 @@ export type TypedQueryOptions<TResponse> = Omit<
   headers?: Record<string, string>;
   params?: Record<string, string | number | boolean>;
   authRequired?: boolean;
-  transformResponse?: (data: any) => TResponse;
+  transformResponse?: (data: unknown) => TResponse;
   enabled?: boolean;
 };
 

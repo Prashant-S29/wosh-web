@@ -79,7 +79,7 @@ export const SignupForm: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Let's get started</CardTitle>
+          <CardTitle>Let&apos;s get started</CardTitle>
           <CardDescription>Create a new account</CardDescription>
         </CardHeader>
         <CardContent>

@@ -6,11 +6,11 @@ import type React from 'react';
 import { useMounted } from '@/hooks/useMounted';
 
 // components
-import { ThemeProvider as NextThemesProvider } from 'next-themes';
-import { Toaster } from 'sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { useState } from 'react';
+import { Toaster } from 'sonner';
 
 interface Props {
   children: React.ReactNode;
@@ -27,8 +27,12 @@ export const Provider: React.FC<Props> = ({ children }) => {
             staleTime: 60 * 1000,
             gcTime: 10 * 60 * 1000,
             refetchOnWindowFocus: false,
-            retry: (failureCount, error: any) => {
-              if (error?.status >= 400 && error?.status < 500) {
+            retry: (failureCount, error: unknown) => {
+              const hasStatus = (err: unknown): err is { status: number } => {
+                return typeof err === 'object' && err !== null && 'status' in err;
+              };
+
+              if (hasStatus(error) && error.status >= 400 && error.status < 500) {
                 return false;
               }
               return failureCount < 3;

@@ -12,7 +12,7 @@ import { useTypedQuery } from '@/hooks';
 import { GetSessionResponse } from '@/types/api';
 
 const Dashboard: React.FC = () => {
-  const { token, isLoading, isAuthenticated } = useCheckAuthClient();
+  const { token, isLoading } = useCheckAuthClient();
 
   const { data: sessionData } = useTypedQuery<GetSessionResponse>({
     endpoint: '/api/auth/session',
