@@ -10,7 +10,8 @@ import { SignupSchema, SignupSchemaType } from '@/schema';
 import { useTypedMutation } from '@/hooks';
 
 // types
-import { SignupRequest, SignupResponse } from '@/types/api';
+import { SignupRequest } from '@/types/api/request';
+import { SignupResponse } from '@/types/api/response';
 
 // rhf
 import { useForm } from 'react-hook-form';

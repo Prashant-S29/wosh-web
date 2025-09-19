@@ -10,7 +10,7 @@ import { removeCookie } from '@/lib/utils.cookies';
 import { Sun, Moon, Monitor, LogOut, Check } from 'lucide-react';
 
 // types
-import { GetSessionResponse } from '@/types/api';
+import { GetSessionResponse } from '@/types/api/response';
 
 // hooks
 import { useTypedQuery } from '@/hooks';

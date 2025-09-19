@@ -58,9 +58,6 @@ export function useTypedQuery<TResponse>(
         });
 
         const responseData = await response.json();
-
-        console.log('responseData:', responseData);
-
         if (!response.ok) {
           return {
             data: null,

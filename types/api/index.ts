@@ -1,6 +1,3 @@
-export * from './types.apiRequest';
-export * from './types.apiResponse';
-
 export type ApiError = {
   message: string;
   status: number;
