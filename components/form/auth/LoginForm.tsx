@@ -13,7 +13,8 @@ import { LoginSchema, LoginSchemaType } from '@/schema';
 import { useTypedMutation } from '@/hooks';
 
 // types
-import { LoginRequest, LoginResponse } from '@/types/api';
+import { LoginResponse } from '@/types/api/response';
+import { LoginRequest } from '@/types/api/request';
 
 //  rhf
 import { useForm } from 'react-hook-form';
