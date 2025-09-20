@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 
 // data
-import { navLinks } from './data';
+// import { navLinks } from './data';
 
 // utils
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
@@ -25,7 +25,7 @@ export const Header: React.FC = () => {
           </Link>
         </div>
         <div className="flex items-center">
-          <nav className="flex items-center gap-5">
+          {/* <nav className="flex items-center gap-5">
             {navLinks.map((link) => (
               <Button key={link.name} variant="ghost" asChild>
                 <Link href={link.href}>{link.name}</Link>
@@ -33,7 +33,7 @@ export const Header: React.FC = () => {
             ))}
           </nav>
 
-          <div className="bg-foreground mr-8 ml-5 h-5 w-[1px]" />
+          <div className="bg-foreground mr-8 ml-5 h-5 w-[1px]" /> */}
 
           {token ? (
             <div className="flex items-center gap-5">
