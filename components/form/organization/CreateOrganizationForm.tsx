@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Schema
 import { CreateOrganizationSchema, type CreateOrganizationSchemaType } from '@/schema/organization';
@@ -11,8 +12,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 // Crypto utilities
-import { createOrganizationKeys } from '@/lib/crypto/crypto-utils';
-import { secureStorage, isSecureStorageAvailable } from '@/lib/crypto/secure-storage';
+import { createOrganizationKeys } from '@/lib/crypto/org/crypto-utils.org';
+import { secureStorage } from '@/lib/crypto/org/secure-storage.org';
 
 // types
 import { CreateOrganizationResponse, GetSessionResponse } from '@/types/api/response';
@@ -64,6 +65,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
   // helper
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   // states
   const [showPassphrase, setShowPassphrase] = useState(false);
@@ -94,9 +96,11 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
   const onSubmit = async (data: OrgFormData) => {
     try {
-      // // Check if secure storage is available
-      if (!isSecureStorageAvailable()) {
-        toast.error('Secure storage is not available in your browser');
+      // Check if secure storage is available
+      const storageAvailable = secureStorage.isAvailable();
+      if (!storageAvailable.data) {
+        console.error('Storage check failed:', storageAvailable.error);
+        toast.error(storageAvailable.message);
         return;
       }
 
@@ -108,11 +112,19 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       // Generate cryptographic keys
       const orgKeys = await createOrganizationKeys(data.masterPassphrase);
 
+      if (!orgKeys.data) {
+        toast.error('Failed to create organization keys');
+        return;
+      }
+
       // Create organization on server
       const response = await createOrganizationMutation.mutateAsync({
         name: data.name,
-        publicKey: orgKeys.publicKey,
         ownerId: sessionData.data.user.id,
+        encryptionIv: orgKeys.data.iv,
+        keyDerivationSalt: orgKeys.data.salt,
+        privateKeyEncrypted: orgKeys.data.privateKeyEncrypted,
+        publicKey: orgKeys.data.publicKey,
       });
 
       // invalidate organizations
@@ -126,7 +138,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       }
 
       // Store keys locally
-      await secureStorage.storeOrgKeys(response.data.id, sessionData.data.user.id, orgKeys);
+      await secureStorage.storeOrgKeys(response.data.id, sessionData.data.user.id, orgKeys.data);
 
       // Clear sensitive data from memory
       data.masterPassphrase = '';
@@ -134,6 +146,9 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
       toast.success(`Organization "${data.name}" created successfully`);
       setOpen?.(false);
+
+      // Redirect to organization dashboard
+      router.push(`/dashboard/organization/${response.data.id}`);
     } catch (error) {
       console.error('Error creating organization:', error);
 

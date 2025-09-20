@@ -14,3 +14,19 @@ export type GetAllAvailableOrganizationsResponse = {
     pages: number;
   };
 };
+
+export type GetOrganizationResponse = {
+  id: string;
+  name: string;
+  ownerId: string;
+  publicKey: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RecoverOrgKeysResponse = {
+  privateKeyEncrypted: string;
+  keyDerivationSalt: string;
+  encryptionIv: string;
+  publicKey: string;
+};

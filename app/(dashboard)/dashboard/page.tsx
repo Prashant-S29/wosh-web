@@ -15,6 +15,7 @@ import { AvailableOrganizations } from '@/components/dashboard/feature';
 const Dashboard: React.FC = () => {
   const { token } = useCheckAuthClient({
     redirectTo: '/login',
+    redirect: true,
   });
 
   const { data: sessionData } = useTypedQuery<GetSessionResponse>({
