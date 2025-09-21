@@ -8,7 +8,7 @@ import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 import { useTypedQuery } from '@/hooks';
 
 // types
-import { GetAllAvailableOrganizationsResponse, GetSessionResponse } from '@/types/api/response';
+import { GetAllAvailableProjectsResponse, GetSessionResponse } from '@/types/api/response';
 
 // icons
 import { ChevronRightIcon } from 'lucide-react';
@@ -41,7 +41,7 @@ export const AvailableProjects: React.FC<AvailableProjectsProps> = ({ organizati
   });
 
   const { data: projectData, isLoading: isProjectLoading } =
-    useTypedQuery<GetAllAvailableOrganizationsResponse>({
+    useTypedQuery<GetAllAvailableProjectsResponse>({
       endpoint: `/api/project/${organizationId}/all?limit=10&page=1`,
       queryKey: ['project', organizationId],
       enabled: !!token && !!sessionData?.data?.user?.id && !!organizationId,
@@ -68,13 +68,13 @@ export const AvailableProjects: React.FC<AvailableProjectsProps> = ({ organizati
           </div>
         ) : (
           <>
-            {projectData?.data?.data.length === 0 ? (
+            {projectData?.data?.allProjects.length === 0 ? (
               <div className="bg-accent/50 flex h-[100px] flex-col items-center justify-center rounded-sm">
                 <p className="text-muted-foreground text-sm">No projects found</p>
               </div>
             ) : (
               <div className="flex flex-col">
-                {projectData?.data?.data.map((data, index) => (
+                {projectData?.data?.allProjects.map((data, index) => (
                   <Button
                     key={index}
                     asChild

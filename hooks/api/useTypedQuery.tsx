@@ -89,12 +89,24 @@ export function useTypedQuery<TResponse>(
           };
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        // Network error or parsing error
+        const errorMessage =
+          error instanceof Error
+            ? {
+                code: 'UNKNOWN_ERROR',
+                message: error.message,
+                statusCode: 500,
+              }
+            : {
+                code: 'UNKNOWN_ERROR',
+                message: 'Unknown error occurred',
+                statusCode: 500,
+              };
 
         return {
           data: null,
           error: errorMessage,
-          message: errorMessage,
+          message: 'An error occurred',
         };
       }
     },

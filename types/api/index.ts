@@ -1,12 +1,12 @@
-export type ApiError = {
+export type BackendError = {
+  code: string;
   message: string;
-  status: number;
-  errors?: Record<string, string[]>;
+  statusCode: number;
 };
 
 export type BackendResponse<T> = {
   data: T | null;
-  error: string | null;
+  error: BackendError | null;
   message: string;
 };
 

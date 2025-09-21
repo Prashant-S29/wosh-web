@@ -3,7 +3,7 @@ export type CreateOrganizationResponse = {
 };
 
 export type GetAllAvailableOrganizationsResponse = {
-  data: {
+  allOrgs: {
     id: string;
     name: string;
   }[];
@@ -12,6 +12,8 @@ export type GetAllAvailableOrganizationsResponse = {
     page: number;
     limit: number;
     pages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
   };
 };
 
