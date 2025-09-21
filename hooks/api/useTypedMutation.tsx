@@ -1,5 +1,5 @@
 import { getFromCookie } from '@/lib/utils.cookies';
-import { SafeApiResponse } from '@/types/api';
+import { BackendError, BackendResponse, SafeApiResponse } from '@/types/api';
 import { useMutation, UseMutationOptions, UseMutationResult } from '@tanstack/react-query';
 
 export type TypedMutationOptions<TRequest, TResponse> = Omit<
@@ -54,11 +54,15 @@ export function useTypedMutation<TRequest, TResponse>(
         const responseData: unknown = await response.json();
         if (!response.ok) {
           // Type guard for error response
-          const errorResponse = responseData as { message?: string };
+          const { error } = responseData as BackendResponse<null>;
           return {
             data: null,
-            error: errorResponse.message || `HTTP ${response.status} error`,
-            message: errorResponse.message || 'An error occurred',
+            error: error || {
+              code: 'UNKNOWN_ERROR',
+              message: 'An error occurred',
+              statusCode: 500,
+            },
+            message: error?.message || 'An error occurred',
           };
         }
 
@@ -66,7 +70,7 @@ export function useTypedMutation<TRequest, TResponse>(
         if (responseData && typeof responseData === 'object' && 'data' in responseData) {
           const apiResponse = responseData as {
             data: unknown;
-            error?: string | null;
+            error?: BackendError | null;
             message?: string;
           };
 
@@ -93,12 +97,23 @@ export function useTypedMutation<TRequest, TResponse>(
         }
       } catch (error) {
         // Network error or parsing error
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        const errorMessage =
+          error instanceof Error
+            ? {
+                code: 'UNKNOWN_ERROR',
+                message: error.message,
+                statusCode: 500,
+              }
+            : {
+                code: 'UNKNOWN_ERROR',
+                message: 'Unknown error occurred',
+                statusCode: 500,
+              };
 
         return {
           data: null,
           error: errorMessage,
-          message: errorMessage,
+          message: 'An error occurred',
         };
       }
     },

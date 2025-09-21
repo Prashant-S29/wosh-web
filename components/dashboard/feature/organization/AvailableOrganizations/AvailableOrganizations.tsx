@@ -64,13 +64,13 @@ export const AvailableOrganizations: React.FC = () => {
           </div>
         ) : (
           <>
-            {organizationsData?.data?.data.length === 0 ? (
+            {organizationsData?.data?.allOrgs.length === 0 ? (
               <div className="bg-accent/50 flex h-[100px] flex-col items-center justify-center rounded-sm">
                 <p className="text-muted-foreground text-sm">No organizations found</p>
               </div>
             ) : (
               <div className="flex flex-col">
-                {organizationsData?.data?.data.map((data, index) => (
+                {organizationsData?.data?.allOrgs.map((data, index) => (
                   <Button
                     key={index}
                     asChild
