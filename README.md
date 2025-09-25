@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wosh - Zero Knowledge Secret Management Platform
 
-## Getting Started
+**A Zero Knowledge and Zero Exposure secret management and sharing platform**
 
-First, run the development server:
+**Status:** Currently under development
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Repository Structure
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Frontend Repo:** [Repository URL]
+- **Backend Repo:** [Repository URL]
+- **Wosh CLI Repo:** [Repository URL]
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Core Security Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Zero Knowledge
 
-## Learn More
+All data is encrypted locally on your device before transmission. Wosh servers never have access to your plaintext secrets or encryption keys.
 
-To learn more about Next.js, take a look at the following resources:
+### Zero Exposure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+When sharing secrets, the CLI directly injects decrypted values into your local environment without exposing them to logs, stdout, or temporary files.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Security Guarantees
 
-## Deploy on Vercel
+- **Zero Knowledge:** Servers cannot decrypt your data
+- **Zero Exposure:** Secrets never appear in logs or temporary files
+- **Device Security:** Multi-device support with proper key isolation
+- **Cryptographic Integrity:** Ed25519 signatures ensure data authenticity
+- **Forward Secrecy:** Compromised sessions don't affect past communications
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Development Status
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Core cryptographic systems and security architecture are implemented:
+
+- [X] Authentication system
+- [X] Organization creation with MKDF
+- [X] Project creation with hierarchical keys
+- [ ] Secrets management (in progress)
+- [ ] Sharing mechanisms (in progress)
+- [ ] CLI integration (in progress)

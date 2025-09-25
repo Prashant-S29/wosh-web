@@ -23,9 +23,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FormDialogOpener } from '@/components/common';
 import { Button } from '@/components/ui/button';
-import { CreateOrganizationForm } from '@/components/form/organization';
 
 export const AvailableOrganizations: React.FC = () => {
   const { token } = useCheckAuthClient();
@@ -90,15 +88,10 @@ export const AvailableOrganizations: React.FC = () => {
         )}
       </CardContent>
 
-      <CardFooter>
-        <FormDialogOpener
-          trigger={<Button className="w-full">Create Organization</Button>}
-          title="Create Organization"
-          description="Create a new organization"
-          className="w-full max-w-[800px]"
-        >
-          <CreateOrganizationForm />
-        </FormDialogOpener>
+      <CardFooter className="flex flex-col gap-2">
+        <Button asChild className="w-full">
+          <Link href="/dashboard/organization/new">Create Organization</Link>
+        </Button>
       </CardFooter>
     </Card>
   );

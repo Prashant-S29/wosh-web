@@ -14,7 +14,9 @@ import { Button } from '@/components/ui/button';
 import { HeaderUserProfile } from '@/components/feature';
 
 export const Header: React.FC = () => {
-  const { isLoading, token } = useCheckAuthClient();
+  const { isLoading, token } = useCheckAuthClient({
+    redirect: false,
+  });
 
   return (
     <header className="fixed w-full">

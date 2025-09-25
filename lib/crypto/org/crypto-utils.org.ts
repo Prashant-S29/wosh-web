@@ -3,15 +3,22 @@ import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { pbkdf2 } from '@noble/hashes/pbkdf2';
 import { randomBytes } from '@noble/hashes/utils';
-import { OrganizationKeyPair, StoredOrgKeys } from '@/types/encryptions';
+import { MKDFConfig, OrganizationKeyPair, StoredOrgKeysMKDF } from '@/types/encryptions';
 
 type CryptoResult<T> = {
   data: T | null;
-  error: unknown;
+  error: string | null;
   message: string;
 };
 
-// generate a cryptographically secure salt
+// MKDF specific types
+export interface MKDFFactors {
+  factor1: Uint8Array; // Passphrase-derived
+  factor2?: Uint8Array; // Device-derived
+  factor3?: Uint8Array | null | undefined; // PIN/Biometric-derived
+}
+
+// Generate a cryptographically secure salt
 export function generateSalt(): CryptoResult<Uint8Array> {
   try {
     const salt = randomBytes(32);
@@ -21,16 +28,17 @@ export function generateSalt(): CryptoResult<Uint8Array> {
       message: 'Salt generated successfully',
     };
   } catch (error) {
+    console.error('Failed to generate cryptographic salt:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to generate cryptographic salt',
       message: 'Failed to generate cryptographic salt',
     };
   }
 }
 
-// derive master key from user passphrase using PBKDF2
-export async function deriveMasterKey(
+// Derive factor 1: Passphrase-based key (unchanged from original)
+export async function derivePassphraseKey(
   passphrase: string,
   salt: Uint8Array,
   iterations: number = 100000,
@@ -39,7 +47,7 @@ export async function deriveMasterKey(
     if (!passphrase || passphrase.length < 12) {
       return {
         data: null,
-        error: new Error('Invalid passphrase'),
+        error: 'Invalid passphrase',
         message: 'Passphrase must be at least 12 characters long',
       };
     }
@@ -47,7 +55,7 @@ export async function deriveMasterKey(
     if (!salt || salt.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid salt'),
+        error: 'Invalid salt',
         message: 'Invalid salt provided for key derivation',
       };
     }
@@ -55,32 +63,196 @@ export async function deriveMasterKey(
     const encoder = new TextEncoder();
     const passphraseBytes = encoder.encode(passphrase);
 
-    const masterKey = pbkdf2(sha256, passphraseBytes, salt, {
+    const factor1 = pbkdf2(sha256, passphraseBytes, salt, {
       c: iterations,
       dkLen: 32,
     });
 
     return {
-      data: masterKey,
+      data: factor1,
       error: null,
-      message: 'Master key derived successfully',
+      message: 'Passphrase factor derived successfully',
     };
   } catch (error) {
+    console.error('Failed to derive passphrase factor:', error);
     return {
       data: null,
-      error,
-      message: 'Failed to derive master key from passphrase',
+      error: 'Failed to derive passphrase factor',
+      message: 'Failed to derive passphrase factor',
     };
   }
 }
 
-// derive organization private key from master key using HKDF
+// Derive factor 2: Device-based key
+export function deriveDeviceKey(
+  deviceFingerprint: string,
+  deviceSalt: Uint8Array,
+): CryptoResult<Uint8Array> {
+  try {
+    if (!deviceFingerprint || deviceFingerprint.length < 10) {
+      return {
+        data: null,
+        error: 'Invalid device fingerprint',
+        message: 'Device fingerprint is too short or invalid',
+      };
+    }
+
+    if (!deviceSalt || deviceSalt.length !== 32) {
+      return {
+        data: null,
+        error: 'Invalid device salt',
+        message: 'Invalid device salt provided',
+      };
+    }
+
+    const encoder = new TextEncoder();
+    const fingerprintBytes = encoder.encode(deviceFingerprint);
+
+    // Use HKDF to derive device factor
+    const factor2 = hkdf(
+      sha256,
+      fingerprintBytes,
+      deviceSalt,
+      encoder.encode('wosh-device-factor-v1'),
+      32,
+    );
+
+    return {
+      data: factor2,
+      error: null,
+      message: 'Device factor derived successfully',
+    };
+  } catch (error) {
+    console.error('Failed to derive device factor:', error);
+    return {
+      data: null,
+      error: 'Failed to derive device factor',
+      message: 'Failed to derive device factor',
+    };
+  }
+}
+
+// Derive factor 3: PIN/Biometric-based key
+export async function derivePinKey(
+  pin: string,
+  pinSalt: Uint8Array,
+  iterations: number = 50000,
+): Promise<CryptoResult<Uint8Array>> {
+  try {
+    if (!pin || pin.length < 4) {
+      return {
+        data: null,
+        error: 'Invalid PIN',
+        message: 'PIN must be at least 4 characters long',
+      };
+    }
+
+    if (!pinSalt || pinSalt.length !== 32) {
+      return {
+        data: null,
+        error: 'Invalid PIN salt',
+        message: 'Invalid PIN salt provided',
+      };
+    }
+
+    const encoder = new TextEncoder();
+    const pinBytes = encoder.encode(pin);
+
+    // Use fewer iterations for PIN as it's typically shorter
+    const factor3 = pbkdf2(sha256, pinBytes, pinSalt, {
+      c: iterations,
+      dkLen: 32,
+    });
+
+    return {
+      data: factor3,
+      error: null,
+      message: 'PIN factor derived successfully',
+    };
+  } catch (error) {
+    console.error('Failed to derive PIN factor:', error);
+    return {
+      data: null,
+      error: 'Failed to derive PIN factor',
+      message: 'Failed to derive PIN factor',
+    };
+  }
+}
+
+// Combine multiple factors using XOR and HKDF
+export function combineMKDFFactors(
+  factors: MKDFFactors,
+  combinationSalt: Uint8Array,
+): CryptoResult<Uint8Array> {
+  try {
+    if (!factors.factor1) {
+      return {
+        data: null,
+        error: 'Factor 1 required',
+        message: 'Passphrase factor is required',
+      };
+    }
+
+    if (!combinationSalt || combinationSalt.length !== 32) {
+      return {
+        data: null,
+        error: 'Invalid combination salt',
+        message: 'Invalid salt for factor combination',
+      };
+    }
+
+    // Start with factor 1
+    const combinedEntropy = new Uint8Array(factors.factor1);
+
+    // XOR with factor 2 if present
+    if (factors.factor2) {
+      for (let i = 0; i < 32; i++) {
+        combinedEntropy[i] ^= factors.factor2[i];
+      }
+    }
+
+    // XOR with factor 3 if present
+    if (factors.factor3) {
+      for (let i = 0; i < 32; i++) {
+        combinedEntropy[i] ^= factors.factor3[i];
+      }
+    }
+
+    // Use HKDF to derive final master key
+    const encoder = new TextEncoder();
+    const masterKey = hkdf(
+      sha256,
+      combinedEntropy,
+      combinationSalt,
+      encoder.encode('wosh-mkdf-master-v1'),
+      32,
+    );
+
+    // Secure wipe the combined entropy
+    secureWipe(combinedEntropy);
+
+    return {
+      data: masterKey,
+      error: null,
+      message: 'MKDF factors combined successfully',
+    };
+  } catch (error) {
+    console.error('Failed to combine MKDF factors:', error);
+    return {
+      data: null,
+      error: 'Failed to combine MKDF factors',
+      message: 'Failed to combine MKDF factors',
+    };
+  }
+}
+
+// Original functions (unchanged but renamed for clarity)
 export function deriveKey(masterKey: Uint8Array, infoString: string): CryptoResult<Uint8Array> {
   try {
     if (!masterKey || masterKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid master key'),
+        error: 'Invalid master key',
         message: 'Invalid master key provided',
       };
     }
@@ -94,15 +266,16 @@ export function deriveKey(masterKey: Uint8Array, infoString: string): CryptoResu
       message: `Key derived with context "${infoString}" successfully`,
     };
   } catch (error) {
+    console.error(`Failed to derive key with context "${infoString}":`, error);
     return {
       data: null,
-      error,
+      error: 'Failed to derive key with context',
       message: `Failed to derive key with context "${infoString}"`,
     };
   }
 }
 
-// generate Ed25519 key pair for organization
+// Generate Ed25519 key pair for organization (unchanged)
 export function generateOrgKeyPair(privateKeySeed?: Uint8Array): CryptoResult<OrganizationKeyPair> {
   try {
     let privateKey: Uint8Array;
@@ -111,7 +284,7 @@ export function generateOrgKeyPair(privateKeySeed?: Uint8Array): CryptoResult<Or
       if (privateKeySeed.length !== 32) {
         return {
           data: null,
-          error: new Error('Invalid private key seed'),
+          error: 'Invalid private key seed',
           message: 'Private key seed must be 32 bytes',
         };
       }
@@ -128,21 +301,22 @@ export function generateOrgKeyPair(privateKeySeed?: Uint8Array): CryptoResult<Or
       message: 'Organization key pair generated successfully',
     };
   } catch (error) {
+    console.error('Failed to generate organization key pair:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to generate organization key pair',
       message: 'Failed to generate organization key pair',
     };
   }
 }
 
-// convert bytes to base64 string
+// Convert bytes to base64 string (unchanged)
 export function toBase64(bytes: Uint8Array): CryptoResult<string> {
   try {
     if (!bytes || bytes.length === 0) {
       return {
         data: null,
-        error: new Error('Invalid bytes'),
+        error: 'Invalid bytes',
         message: 'No bytes provided for encoding',
       };
     }
@@ -154,21 +328,22 @@ export function toBase64(bytes: Uint8Array): CryptoResult<string> {
       message: 'Bytes encoded to base64 successfully',
     };
   } catch (error) {
+    console.error('Failed to encode bytes to base64:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to encode bytes to base64',
       message: 'Failed to encode bytes to base64',
     };
   }
 }
 
-// convert base64 string to bytes
+// Convert base64 string to bytes (unchanged)
 export function fromBase64(base64: string): CryptoResult<Uint8Array> {
   try {
     if (!base64 || typeof base64 !== 'string') {
       return {
         data: null,
-        error: new Error('Invalid base64'),
+        error: 'Invalid base64',
         message: 'Invalid base64 string provided',
       };
     }
@@ -185,15 +360,16 @@ export function fromBase64(base64: string): CryptoResult<Uint8Array> {
       message: 'Base64 decoded to bytes successfully',
     };
   } catch (error) {
+    console.error('Failed to decode base64 string:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to decode base64 string',
       message: 'Failed to decode base64 string',
     };
   }
 }
 
-// encrypt data using AES-GCM (Web Crypto API)
+// Encrypt data using AES-GCM (unchanged)
 export async function encryptData(
   data: Uint8Array,
   key: Uint8Array,
@@ -202,7 +378,7 @@ export async function encryptData(
     if (!data || data.length === 0) {
       return {
         data: null,
-        error: new Error('No data to encrypt'),
+        error: 'No data to encrypt',
         message: 'No data provided for encryption',
       };
     }
@@ -210,13 +386,12 @@ export async function encryptData(
     if (!key || key.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid encryption key'),
+        error: 'Invalid encryption key',
         message: 'Encryption key must be 32 bytes',
       };
     }
 
     const iv = randomBytes(12); // 96-bit IV for GCM
-
     const keyBuffer = new Uint8Array(key);
     const dataBuffer = new Uint8Array(data);
     const ivBuffer = new Uint8Array(iv);
@@ -240,15 +415,16 @@ export async function encryptData(
       message: 'Data encrypted successfully',
     };
   } catch (error) {
+    console.error('Failed to encrypt data:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to encrypt data',
       message: 'Failed to encrypt data',
     };
   }
 }
 
-// decrypt data using AES-GCM (Web Crypto API)
+// Decrypt data using AES-GCM (unchanged)
 export async function decryptData(
   encryptedData: Uint8Array,
   key: Uint8Array,
@@ -258,7 +434,7 @@ export async function decryptData(
     if (!encryptedData || encryptedData.length === 0) {
       return {
         data: null,
-        error: new Error('No encrypted data'),
+        error: 'No encrypted data',
         message: 'No encrypted data provided for decryption',
       };
     }
@@ -266,7 +442,7 @@ export async function decryptData(
     if (!key || key.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid decryption key'),
+        error: 'Invalid decryption key',
         message: 'Decryption key must be 32 bytes',
       };
     }
@@ -274,7 +450,7 @@ export async function decryptData(
     if (!iv || iv.length !== 12) {
       return {
         data: null,
-        error: new Error('Invalid IV'),
+        error: 'Invalid IV',
         message: 'Invalid initialization vector for decryption',
       };
     }
@@ -301,38 +477,94 @@ export async function decryptData(
   } catch (error) {
     // Check for specific decryption errors
     if (error instanceof Error && error.name === 'OperationError') {
+      console.error('[OperationError] Failed to decrypt data:', error);
       return {
         data: null,
-        error,
+        error: 'Failed to decrypt data',
         message: 'Incorrect passphrase or corrupted data',
       };
     }
 
+    console.error(' Failed to decrypt data:', error);
+
     return {
       data: null,
-      error,
+      error: 'Failed to decrypt data',
       message: 'Failed to decrypt data',
     };
   }
 }
 
-// create organization keys with passphrase-based security
-export async function createOrganizationKeys(
+// MKDF: Create organization keys with multi-factor security
+export async function createOrganizationKeysMKDF(
   passphrase: string,
-): Promise<CryptoResult<StoredOrgKeys>> {
+  deviceFingerprint: string,
+  pin?: string,
+  config?: Partial<MKDFConfig>,
+): Promise<CryptoResult<StoredOrgKeysMKDF>> {
   try {
-    // 1. Generate salt for key derivation
-    const saltResult = generateSalt();
-    if (!saltResult.data) {
+    // Default MKDF configuration
+    const mkdfConfig: MKDFConfig = {
+      requiredFactors: 2,
+      enabledFactors: pin ? ['passphrase', 'device', 'pin'] : ['passphrase', 'device'],
+      ...config,
+    };
+
+    // 1. Generate all required salts
+    const mainSaltResult = generateSalt();
+    const deviceSaltResult = generateSalt();
+    const pinSaltResult = pin ? generateSalt() : null;
+    const combinationSaltResult = generateSalt();
+
+    if (!mainSaltResult.data || !deviceSaltResult.data || !combinationSaltResult.data) {
       return {
         data: null,
-        error: saltResult.error,
-        message: saltResult.message,
+        error: 'Salt generation failed',
+        message: 'Failed to generate required salts',
       };
     }
 
-    // 2. Derive master key from passphrase
-    const masterKeyResult = await deriveMasterKey(passphrase, saltResult.data);
+    // 2. Derive Factor 1: Passphrase
+    const factor1Result = await derivePassphraseKey(passphrase, mainSaltResult.data);
+    if (!factor1Result.data) {
+      return {
+        data: null,
+        error: factor1Result.error,
+        message: factor1Result.message,
+      };
+    }
+
+    // 3. Derive Factor 2: Device
+    const factor2Result = deriveDeviceKey(deviceFingerprint, deviceSaltResult.data);
+    if (!factor2Result.data) {
+      return {
+        data: null,
+        error: factor2Result.error,
+        message: factor2Result.message,
+      };
+    }
+
+    // 4. Derive Factor 3: PIN (optional)
+    let factor3Result: CryptoResult<Uint8Array> | null = null;
+    if (pin && pinSaltResult?.data) {
+      factor3Result = await derivePinKey(pin, pinSaltResult.data);
+      if (!factor3Result.data) {
+        return {
+          data: null,
+          error: factor3Result.error,
+          message: factor3Result.message,
+        };
+      }
+    }
+
+    // 5. Combine factors
+    const factors: MKDFFactors = {
+      factor1: factor1Result.data,
+      factor2: factor2Result.data,
+      factor3: factor3Result?.data,
+    };
+
+    const masterKeyResult = combineMKDFFactors(factors, combinationSaltResult.data);
     if (!masterKeyResult.data) {
       return {
         data: null,
@@ -341,7 +573,7 @@ export async function createOrganizationKeys(
       };
     }
 
-    // 3. Derive organization private key seed
+    // 6. Generate organization key pair
     const orgPrivateKeyResult = deriveKey(masterKeyResult.data, 'org-signing-v1');
     if (!orgPrivateKeyResult.data) {
       return {
@@ -351,7 +583,6 @@ export async function createOrganizationKeys(
       };
     }
 
-    // 4. Generate Ed25519 key pair
     const keyPairResult = generateOrgKeyPair(orgPrivateKeyResult.data);
     if (!keyPairResult.data) {
       return {
@@ -361,7 +592,7 @@ export async function createOrganizationKeys(
       };
     }
 
-    // 5. Create encryption key for local storage
+    // 7. Create storage encryption key
     const storageKeyResult = deriveKey(masterKeyResult.data, 'local-storage-v1');
     if (!storageKeyResult.data) {
       return {
@@ -371,7 +602,7 @@ export async function createOrganizationKeys(
       };
     }
 
-    // 6. Encrypt private key for storage
+    // 8. Encrypt private key for storage
     const encryptResult = await encryptData(keyPairResult.data.privateKey, storageKeyResult.data);
     if (!encryptResult.data) {
       return {
@@ -381,85 +612,236 @@ export async function createOrganizationKeys(
       };
     }
 
-    // 7. Convert to base64 for storage
-    const publicKeyB64 = toBase64(keyPairResult.data.publicKey);
-    const encryptedPrivateKeyB64 = toBase64(encryptResult.data.encrypted);
-    const saltB64 = toBase64(saltResult.data);
-    const ivB64 = toBase64(encryptResult.data.iv);
-
-    if (!publicKeyB64.data || !encryptedPrivateKeyB64.data || !saltB64.data || !ivB64.data) {
+    // 9. Encrypt device factor for storage
+    const deviceKeyEncryptResult = await encryptData(factor2Result.data, storageKeyResult.data);
+    if (!deviceKeyEncryptResult.data) {
       return {
         data: null,
-        error: new Error('Base64 encoding failed'),
+        error: deviceKeyEncryptResult.error,
+        message: 'Failed to encrypt device factor',
+      };
+    }
+
+    // 10. Convert to base64 for storage
+    const publicKeyB64 = toBase64(keyPairResult.data.publicKey);
+    const encryptedPrivateKeyB64 = toBase64(encryptResult.data.encrypted);
+    const mainSaltB64 = toBase64(mainSaltResult.data);
+    const ivB64 = toBase64(encryptResult.data.iv);
+    const deviceKeyEncryptedB64 = toBase64(deviceKeyEncryptResult.data.encrypted);
+    const deviceKeyIvB64 = toBase64(deviceKeyEncryptResult.data.iv);
+    const deviceKeySaltB64 = toBase64(deviceSaltResult.data);
+    const combinationSaltB64 = toBase64(combinationSaltResult.data);
+    const pinSaltB64 = pinSaltResult?.data ? toBase64(pinSaltResult.data) : { data: null };
+
+    if (
+      !publicKeyB64.data ||
+      !encryptedPrivateKeyB64.data ||
+      !mainSaltB64.data ||
+      !ivB64.data ||
+      !deviceKeyEncryptedB64.data ||
+      !deviceKeyIvB64.data ||
+      !deviceKeySaltB64.data
+    ) {
+      return {
+        data: null,
+        error: 'Base64 encoding failed',
         message: 'Failed to encode keys for storage',
+      };
+    }
+
+    // 11. Secure cleanup
+    secureWipe(factor1Result.data);
+    secureWipe(factor2Result.data);
+    if (factor3Result?.data) secureWipe(factor3Result.data);
+    secureWipe(masterKeyResult.data);
+
+    if (!combinationSaltB64.data) {
+      return {
+        data: null,
+        error: 'Missing combination salt',
+        message: 'Missing combination salt',
       };
     }
 
     return {
       data: {
+        // Original fields
         publicKey: publicKeyB64.data,
         privateKeyEncrypted: encryptedPrivateKeyB64.data,
-        salt: saltB64.data,
+        salt: mainSaltB64.data,
         iv: ivB64.data,
+        // MKDF specific fields
+        mkdfVersion: 1,
+        mkdfConfig,
+        deviceFingerprint,
+        deviceKeyEncrypted: deviceKeyEncryptedB64.data,
+        deviceKeyIv: deviceKeyIvB64.data,
+        deviceKeySalt: deviceKeySaltB64.data,
+        combinationSalt: combinationSaltB64.data,
+        ...(pinSaltB64.data ? { pinSalt: pinSaltB64.data } : {}),
       },
       error: null,
-      message: 'Organization keys created successfully',
+      message: 'MKDF organization keys created successfully',
     };
   } catch (error) {
+    console.error('Failed to create MKDF organization keys:', error);
     return {
       data: null,
-      error,
-      message: 'Failed to create organization keys',
+      error: 'Failed to create MKDF organization keys',
+      message: 'Failed to create MKDF organization keys',
     };
   }
 }
 
-// retrieve and decrypt organization private key
-export async function retrieveOrgPrivateKey(
+export async function retrieveOrgPrivateKeyMKDF(
   passphrase: string,
-  storedKeys: StoredOrgKeys,
+  deviceFingerprint: string,
+  pin: string | undefined,
+  storedKeys: StoredOrgKeysMKDF,
 ): Promise<CryptoResult<Uint8Array>> {
   try {
+    // Validate inputs
     if (!passphrase || passphrase.length < 12) {
       return {
         data: null,
-        error: new Error('Invalid passphrase'),
+        error: 'Invalid passphrase',
         message: 'Passphrase must be at least 12 characters long',
       };
     }
 
-    if (!storedKeys.salt || !storedKeys.privateKeyEncrypted || !storedKeys.iv) {
+    if (!deviceFingerprint) {
       return {
         data: null,
-        error: new Error('Incomplete stored keys'),
-        message: 'Stored keys are incomplete or corrupted',
+        error: 'Device fingerprint required',
+        message: 'Device fingerprint is required for MKDF',
       };
     }
 
-    // 1. Decode base64 strings
-    const saltResult = fromBase64(storedKeys.salt);
+    // Validate basic stored keys
+    if (
+      !storedKeys.salt ||
+      !storedKeys.privateKeyEncrypted ||
+      !storedKeys.iv ||
+      !storedKeys.deviceKeySalt ||
+      !storedKeys.deviceFingerprint ||
+      !storedKeys.combinationSalt // Must have combination salt
+    ) {
+      return {
+        data: null,
+        error: 'Incomplete MKDF keys',
+        message: 'MKDF keys are missing required fields',
+      };
+    }
+
+    // Verify device fingerprint matches
+    if (storedKeys.deviceFingerprint !== deviceFingerprint) {
+      return {
+        data: null,
+        error: 'Device mismatch',
+        message: 'Device mismatch',
+      };
+    }
+
+    // Check if PIN is required but not provided
+    const requiresPin = storedKeys.mkdfConfig.enabledFactors.includes('pin');
+    if (requiresPin && !pin) {
+      return {
+        data: null,
+        error: 'PIN required',
+        message: 'PIN is required',
+      };
+    }
+
+    if (requiresPin && !storedKeys.pinSalt) {
+      return {
+        data: null,
+        error: 'PIN salt missing',
+        message: 'PIN salt is required but not found in stored keys',
+      };
+    }
+
+    // Decode base64 strings - USE THE ACTUAL STORED SALTS
+    const mainSaltResult = fromBase64(storedKeys.salt);
+    const deviceKeySaltResult = fromBase64(storedKeys.deviceKeySalt);
+    const combinationSaltResult = fromBase64(storedKeys.combinationSalt); // USE STORED SALT
     const encryptedPrivateKeyResult = fromBase64(storedKeys.privateKeyEncrypted);
     const ivResult = fromBase64(storedKeys.iv);
 
-    if (!saltResult.data || !encryptedPrivateKeyResult.data || !ivResult.data) {
+    if (
+      !mainSaltResult.data ||
+      !deviceKeySaltResult.data ||
+      !combinationSaltResult.data ||
+      !encryptedPrivateKeyResult.data ||
+      !ivResult.data
+    ) {
       return {
         data: null,
-        error: new Error('Base64 decoding failed'),
+        error: 'Base64 decoding failed',
         message: 'Failed to decode stored keys',
       };
     }
 
-    // 2. Reconstruct master key
-    const masterKeyResult = await deriveMasterKey(passphrase, saltResult.data);
+    // Decode PIN salt if needed
+    let pinSaltResult: CryptoResult<Uint8Array> | null = null;
+    if (requiresPin) {
+      pinSaltResult = fromBase64(storedKeys.pinSalt!); // USE STORED PIN SALT
+      if (!pinSaltResult.data) {
+        return {
+          data: null,
+          error: 'Failed to decode PIN salt',
+          message: 'Failed to decode PIN salt',
+        };
+      }
+    }
+
+    // Generate factors using the correct stored salts
+    const factor1Result = await derivePassphraseKey(passphrase, mainSaltResult.data);
+    if (!factor1Result.data) {
+      return {
+        data: null,
+        error: factor1Result.error,
+        message: 'Incorrect passphrase, PIN, or device mismatch',
+      };
+    }
+
+    const factor2Result = deriveDeviceKey(deviceFingerprint, deviceKeySaltResult.data);
+    if (!factor2Result.data) {
+      return {
+        data: null,
+        error: factor2Result.error,
+        message: 'Incorrect passphrase, PIN, or device mismatch',
+      };
+    }
+
+    let factor3Result: CryptoResult<Uint8Array> | null = null;
+    if (pin && requiresPin && pinSaltResult?.data) {
+      factor3Result = await derivePinKey(pin, pinSaltResult.data); // USE REAL PIN SALT
+      if (!factor3Result.data) {
+        return {
+          data: null,
+          error: factor3Result.error,
+          message: 'Incorrect passphrase, PIN, or device mismatch',
+        };
+      }
+    }
+
+    // Combine factors using the REAL stored combination salt
+    const factors: MKDFFactors = {
+      factor1: factor1Result.data,
+      factor2: factor2Result.data,
+      factor3: factor3Result?.data,
+    };
+
+    const masterKeyResult = combineMKDFFactors(factors, combinationSaltResult.data); // USE REAL SALT
     if (!masterKeyResult.data) {
       return {
         data: null,
         error: masterKeyResult.error,
-        message: masterKeyResult.message,
+        message: 'Incorrect passphrase, PIN, or device mismatch',
       };
     }
 
-    // 3. Derive storage encryption key
+    // Derive storage key
     const storageKeyResult = deriveKey(masterKeyResult.data, 'local-storage-v1');
     if (!storageKeyResult.data) {
       return {
@@ -469,23 +851,26 @@ export async function retrieveOrgPrivateKey(
       };
     }
 
-    // 4. Decrypt private key
+    // Decrypt private key
     const decryptResult = await decryptData(
       encryptedPrivateKeyResult.data,
       storageKeyResult.data,
       ivResult.data,
     );
 
+    // Secure cleanup
+    secureWipe(factor1Result.data);
+    secureWipe(factor2Result.data);
+    if (factor3Result?.data) secureWipe(factor3Result.data);
+    secureWipe(masterKeyResult.data);
+    secureWipe(storageKeyResult.data);
+
     if (!decryptResult.data) {
-      // Specifically handle wrong passphrase case
-      if (decryptResult.message === 'Incorrect passphrase or corrupted data') {
-        return {
-          data: null,
-          error: decryptResult.error,
-          message: 'Incorrect master passphrase',
-        };
-      }
-      return decryptResult;
+      return {
+        data: null,
+        error: decryptResult.error,
+        message: 'Incorrect passphrase, PIN, or device mismatch',
+      };
     }
 
     return {
@@ -494,21 +879,22 @@ export async function retrieveOrgPrivateKey(
       message: 'Organization private key retrieved successfully',
     };
   } catch (error) {
+    console.error('MKDF retrieval error:', error);
     return {
       data: null,
-      error,
-      message: 'Failed to retrieve organization private key',
+      error: 'Incorrect passphrase, PIN, or device mismatch',
+      message: 'Incorrect passphrase, PIN, or device mismatch',
     };
   }
 }
 
-// Sign data with Ed25519 private key
+// Sign data with Ed25519 private key (unchanged)
 export function signData(data: Uint8Array, privateKey: Uint8Array): CryptoResult<Uint8Array> {
   try {
     if (!data || data.length === 0) {
       return {
         data: null,
-        error: new Error('No data to sign'),
+        error: 'No data to sign',
         message: 'No data provided for signing',
       };
     }
@@ -516,7 +902,7 @@ export function signData(data: Uint8Array, privateKey: Uint8Array): CryptoResult
     if (!privateKey || privateKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid private key'),
+        error: 'Invalid private key',
         message: 'Invalid private key for signing',
       };
     }
@@ -528,15 +914,16 @@ export function signData(data: Uint8Array, privateKey: Uint8Array): CryptoResult
       message: 'Data signed successfully',
     };
   } catch (error) {
+    console.error('Failed to sign data:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to sign data',
       message: 'Failed to sign data',
     };
   }
 }
 
-// verify signature with Ed25519 public key
+// Verify signature with Ed25519 public key (unchanged)
 export function verifySignature(
   signature: Uint8Array,
   data: Uint8Array,
@@ -546,7 +933,7 @@ export function verifySignature(
     if (!signature || !data || !publicKey) {
       return {
         data: null,
-        error: new Error('Missing parameters'),
+        error: 'Missing parameters',
         message: 'Missing signature, data, or public key for verification',
       };
     }
@@ -558,15 +945,16 @@ export function verifySignature(
       message: isValid ? 'Signature verified successfully' : 'Signature verification failed',
     };
   } catch (error) {
+    console.error('Failed to verify signature:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to verify signature',
       message: 'Failed to verify signature',
     };
   }
 }
 
-// secure memory wipe
+// Secure memory wipe (unchanged)
 export function secureWipe(buffer: Uint8Array): CryptoResult<null> {
   try {
     if (!buffer) {
@@ -588,9 +976,10 @@ export function secureWipe(buffer: Uint8Array): CryptoResult<null> {
       message: 'Memory wiped securely',
     };
   } catch (error) {
+    console.error('Failed to wipe memory securely:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to wipe memory securely',
       message: 'Failed to wipe memory securely',
     };
   }
