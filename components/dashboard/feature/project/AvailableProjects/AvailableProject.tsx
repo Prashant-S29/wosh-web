@@ -8,7 +8,7 @@ import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 import { useTypedQuery } from '@/hooks';
 
 // types
-import { GetAllAvailableProjectsResponse, GetSessionResponse } from '@/types/api/response';
+import { GetAllAvailableProjectsResponse } from '@/types/api/response';
 
 // icons
 import { ChevronRightIcon } from 'lucide-react';
@@ -34,17 +34,11 @@ interface AvailableProjectsProps {
 export const AvailableProjects: React.FC<AvailableProjectsProps> = ({ organizationId }) => {
   const { token } = useCheckAuthClient();
 
-  const { data: sessionData } = useTypedQuery<GetSessionResponse>({
-    endpoint: '/api/auth/session',
-    queryKey: ['user-session', token],
-    enabled: !!token,
-  });
-
   const { data: projectData, isLoading: isProjectLoading } =
     useTypedQuery<GetAllAvailableProjectsResponse>({
       endpoint: `/api/project/${organizationId}/all?limit=10&page=1`,
       queryKey: ['project', organizationId],
-      enabled: !!token && !!sessionData?.data?.user?.id && !!organizationId,
+      enabled: !!token && !!organizationId,
     });
 
   return (

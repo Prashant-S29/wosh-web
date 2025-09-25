@@ -7,6 +7,13 @@ export function middleware(request: NextRequest) {
 
   const isLoggedIn = Boolean(token);
 
+  if (pathname === '/logout') {
+    // delete auth cookie
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.delete('token');
+    return response;
+  }
+
   if (isLoggedIn && (pathname === '/login' || pathname === '/signup')) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
@@ -19,5 +26,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/login', '/signup', '/dashboard/:path*'],
+  matcher: ['/login', '/signup', '/dashboard/:path*', '/logout'],
 };
