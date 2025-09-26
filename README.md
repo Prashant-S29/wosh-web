@@ -6,9 +6,9 @@
 
 ## Repository Structure
 
-- **Frontend Repo:** [Repository URL]
-- **Backend Repo:** [Repository URL]
-- **Wosh CLI Repo:** [Repository URL]
+- **Frontend Repo:** https://github.com/Prashant-S29/wosh-web
+- **Backend Repo:** https://github.com/Prashant-S29/wosh-server
+- **Wosh CLI Repo:** (coming soon)
 
 ## Core Security Architecture
 
@@ -27,14 +27,3 @@ When sharing secrets, the CLI directly injects decrypted values into your local 
 - **Device Security:** Multi-device support with proper key isolation
 - **Cryptographic Integrity:** Ed25519 signatures ensure data authenticity
 - **Forward Secrecy:** Compromised sessions don't affect past communications
-
-## Development Status
-
-Core cryptographic systems and security architecture are implemented:
-
-- [X] Authentication system
-- [X] Organization creation with MKDF
-- [X] Project creation with hierarchical keys
-- [ ] Secrets management (in progress)
-- [ ] Sharing mechanisms (in progress)
-- [ ] CLI integration (in progress)
