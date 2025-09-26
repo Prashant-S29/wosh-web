@@ -32,9 +32,9 @@ When sharing secrets, the CLI directly injects decrypted values into your local 
 
 Core cryptographic systems and security architecture are implemented:
 
-- [X] Authentication system
-- [X] Organization creation with MKDF
-- [X] Project creation with hierarchical keys
+- [x] Authentication system
+- [x] Organization creation with MKDF
+- [x] Project creation with hierarchical keys
 - [ ] Secrets management (in progress)
 - [ ] Sharing mechanisms (in progress)
 - [ ] CLI integration (in progress)
