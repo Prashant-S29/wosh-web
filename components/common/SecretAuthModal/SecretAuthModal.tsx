@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React from 'react';
 
@@ -50,7 +50,10 @@ const createAuthSchema = (requiresPin: boolean) =>
       .min(1, 'Master passphrase is required')
       .min(8, 'Master passphrase must be at least 8 characters'),
     pin: requiresPin
-      ? z.string().min(4, 'PIN must be at least 4 characters')
+      ? z
+          .string()
+          .min(4, 'PIN must be at least 4 characters')
+          .max(8, 'PIN must not exceed 8 characters')
       : z.string().optional(),
   });
 

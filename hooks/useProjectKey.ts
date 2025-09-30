@@ -209,7 +209,16 @@ export function useProjectKey(
           };
         }
 
-        wrappedProjectKeyResult.data = JSON.parse(serverProjectKeysData.data.wrappedSymmetricKey);
+        try {
+          wrappedProjectKeyResult.data = JSON.parse(serverProjectKeysData.data.wrappedSymmetricKey);
+        } catch (error) {
+          console.error('Failed to parse project key from server:', error);
+          return {
+            data: null,
+            error: 'Failed to parse project key from server',
+            message: 'Received malformed project key from server',
+          };
+        }
 
         if (!wrappedProjectKeyResult.data) {
           return {
