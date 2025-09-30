@@ -12,7 +12,7 @@ import {
 
 type ProjectCryptoResult<T> = {
   data: T | null;
-  error: unknown;
+  error: string | null;
   message: string;
 };
 
@@ -39,7 +39,7 @@ export function generateProjectKey(): ProjectCryptoResult<Uint8Array> {
     if (!key || key.length !== 32) {
       return {
         data: null,
-        error: new Error('Key generation failed'),
+        error: 'Key generation failed',
         message: 'Failed to generate 256-bit project key',
       };
     }
@@ -50,9 +50,11 @@ export function generateProjectKey(): ProjectCryptoResult<Uint8Array> {
       message: 'Project symmetric key generated successfully',
     };
   } catch (error) {
+    console.error(error);
+    console.error('Failed to generate project symmetric key:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to generate project symmetric key: ',
       message: 'Failed to generate project symmetric key',
     };
   }
@@ -68,7 +70,7 @@ export async function wrapProjectKey(
     if (!projectKey || projectKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid project key'),
+        error: 'Invalid project key',
         message: 'Project key must be 32 bytes for AES-256',
       };
     }
@@ -76,7 +78,7 @@ export async function wrapProjectKey(
     if (!orgPrivateKey || orgPrivateKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid organization private key'),
+        error: 'Invalid organization private key',
         message: 'Organization private key must be 32 bytes',
       };
     }
@@ -89,9 +91,10 @@ export async function wrapProjectKey(
       ephemeralPrivateKey = x25519.utils.randomSecretKey();
       ephemeralPublicKey = x25519.getPublicKey(ephemeralPrivateKey);
     } catch (error) {
+      console.error('Failed to generate ephemeral key pair for wrapping:', error);
       return {
         data: null,
-        error,
+        error: 'Failed to generate ephemeral key pair for wrapping: ',
         message: 'Failed to generate ephemeral key pair for wrapping',
       };
     }
@@ -104,9 +107,11 @@ export async function wrapProjectKey(
       orgX25519PublicKey = x25519.getPublicKey(orgX25519PrivateKey);
     } catch (error) {
       secureWipe(ephemeralPrivateKey);
+
+      console.error('Failed to derive X25519 public key from organization key:', error);
       return {
         data: null,
-        error,
+        error: 'Failed to derive X25519 public key from organization key: ',
         message: 'Failed to derive X25519 public key from organization key',
       };
     }
@@ -116,10 +121,12 @@ export async function wrapProjectKey(
     try {
       sharedSecret = x25519.getSharedSecret(ephemeralPrivateKey, orgX25519PublicKey);
     } catch (error) {
+      console.error(error);
       secureWipe(ephemeralPrivateKey);
+
       return {
         data: null,
-        error,
+        error: 'Failed to perform X25519 key agreement: ',
         message: 'Failed to perform X25519 key agreement',
       };
     }
@@ -130,11 +137,12 @@ export async function wrapProjectKey(
       const info = new TextEncoder().encode('project-key-wrapping-v1');
       wrappingKey = hkdf(sha256, sharedSecret, undefined, info, 32);
     } catch (error) {
+      console.error('Failed to derive wrapping key from shared secret:', error);
       secureWipe(ephemeralPrivateKey);
       secureWipe(sharedSecret);
       return {
         data: null,
-        error,
+        error: 'Failed to derive wrapping key from shared secret: ',
         message: 'Failed to derive wrapping key from shared secret',
       };
     }
@@ -163,7 +171,7 @@ export async function wrapProjectKey(
       secureWipe(wrappingKey);
       return {
         data: null,
-        error: new Error('Base64 encoding failed'),
+        error: 'Base64 encoding failed',
         message: 'Failed to encode wrapped key components',
       };
     }
@@ -187,9 +195,10 @@ export async function wrapProjectKey(
       message: 'Project key wrapped successfully',
     };
   } catch (error) {
+    console.error('Failed to wrap project key:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to wrap project key: ',
       message: 'Failed to wrap project key',
     };
   }
@@ -205,7 +214,7 @@ export async function unwrapProjectKey(
     if (!wrappedKey) {
       return {
         data: null,
-        error: new Error('Missing wrapped key'),
+        error: 'Missing wrapped key',
         message: 'No wrapped key provided for unwrapping',
       };
     }
@@ -213,7 +222,7 @@ export async function unwrapProjectKey(
     if (wrappedKey.algorithm !== 'aes-256-gcm-x25519' || wrappedKey.version !== 1) {
       return {
         data: null,
-        error: new Error('Unsupported format'),
+        error: 'Unsupported format',
         message: 'Unsupported key wrapping format or version',
       };
     }
@@ -221,7 +230,7 @@ export async function unwrapProjectKey(
     if (!orgPrivateKey || orgPrivateKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid organization private key'),
+        error: 'Invalid organization private key',
         message: 'Organization private key must be 32 bytes',
       };
     }
@@ -229,7 +238,7 @@ export async function unwrapProjectKey(
     if (!wrappedKey.ciphertext || !wrappedKey.iv || !wrappedKey.ephemeralPublicKey) {
       return {
         data: null,
-        error: new Error('Incomplete wrapped key'),
+        error: 'Incomplete wrapped key',
         message: 'Wrapped key is missing required components',
       };
     }
@@ -242,7 +251,7 @@ export async function unwrapProjectKey(
     if (!ciphertextResult.data || !ivResult.data || !ephemeralPublicKeyResult.data) {
       return {
         data: null,
-        error: new Error('Base64 decoding failed'),
+        error: 'Base64 decoding failed',
         message: 'Failed to decode wrapped key components',
       };
     }
@@ -255,9 +264,10 @@ export async function unwrapProjectKey(
     try {
       sharedSecret = x25519.getSharedSecret(orgX25519PrivateKey, ephemeralPublicKeyResult.data);
     } catch (error) {
+      console.error(error);
       return {
         data: null,
-        error,
+        error: 'Failed to recreate shared secret during unwrapping: ',
         message: 'Failed to recreate shared secret during unwrapping',
       };
     }
@@ -268,10 +278,11 @@ export async function unwrapProjectKey(
       const info = new TextEncoder().encode('project-key-wrapping-v1');
       wrappingKey = hkdf(sha256, sharedSecret, undefined, info, 32);
     } catch (error) {
+      console.error(error);
       secureWipe(sharedSecret);
       return {
         data: null,
-        error,
+        error: 'Failed to derive unwrapping key: ',
         message: 'Failed to derive unwrapping key',
       };
     }
@@ -300,9 +311,10 @@ export async function unwrapProjectKey(
       message: 'Project key unwrapped successfully',
     };
   } catch (error) {
+    console.error(error);
     return {
       data: null,
-      error,
+      error: 'Failed to unwrap project key: ',
       message: 'Failed to unwrap project key',
     };
   }
@@ -317,7 +329,7 @@ export async function deriveProjectStorageKey(
     if (!orgPrivateKey || orgPrivateKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid organization private key'),
+        error: 'Invalid organization private key',
         message: 'Organization private key must be 32 bytes',
       };
     }
@@ -325,7 +337,7 @@ export async function deriveProjectStorageKey(
     if (!projectId || typeof projectId !== 'string') {
       return {
         data: null,
-        error: new Error('Invalid project ID'),
+        error: 'Invalid project ID',
         message: 'Project ID must be a non-empty string',
       };
     }
@@ -339,9 +351,10 @@ export async function deriveProjectStorageKey(
       message: 'Project storage key derived successfully',
     };
   } catch (error) {
+    console.error(error);
     return {
       data: null,
-      error,
+      error: 'Failed to derive project storage key: ',
       message: 'Failed to derive project storage key',
     };
   }
@@ -356,7 +369,7 @@ export async function encryptProjectKeyForStorage(
     if (!projectKey || projectKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid project key'),
+        error: 'Invalid project key',
         message: 'Project key must be 32 bytes',
       };
     }
@@ -364,7 +377,7 @@ export async function encryptProjectKeyForStorage(
     if (!storageKey || storageKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid storage key'),
+        error: 'Invalid storage key',
         message: 'Storage key must be 32 bytes',
       };
     }
@@ -384,7 +397,7 @@ export async function encryptProjectKeyForStorage(
     if (!encryptedB64.data || !ivB64.data) {
       return {
         data: null,
-        error: new Error('Base64 encoding failed'),
+        error: 'Base64 encoding failed',
         message: 'Failed to encode encrypted project key for storage',
       };
     }
@@ -398,9 +411,10 @@ export async function encryptProjectKeyForStorage(
       message: 'Project key encrypted for storage successfully',
     };
   } catch (error) {
+    console.error(error);
     return {
       data: null,
-      error,
+      error: 'Failed to encrypt project key for storage: ',
       message: 'Failed to encrypt project key for storage',
     };
   }
@@ -416,7 +430,7 @@ export async function decryptProjectKeyFromStorage(
     if (!encryptedData || !iv) {
       return {
         data: null,
-        error: new Error('Missing encrypted data or IV'),
+        error: 'Missing encrypted data or IV',
         message: 'Both encrypted data and IV are required',
       };
     }
@@ -424,7 +438,7 @@ export async function decryptProjectKeyFromStorage(
     if (!storageKey || storageKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid storage key'),
+        error: 'Invalid storage key',
         message: 'Storage key must be 32 bytes',
       };
     }
@@ -435,7 +449,7 @@ export async function decryptProjectKeyFromStorage(
     if (!encryptedResult.data || !ivResult.data) {
       return {
         data: null,
-        error: new Error('Base64 decoding failed'),
+        error: 'Base64 decoding failed',
         message: 'Failed to decode stored project key data',
       };
     }
@@ -455,9 +469,10 @@ export async function decryptProjectKeyFromStorage(
       message: 'Project key decrypted from storage successfully',
     };
   } catch (error) {
+    console.error(error);
     return {
       data: null,
-      error,
+      error: 'Failed to decrypt project key from storage: ',
       message: 'Failed to decrypt project key from storage',
     };
   }
@@ -471,7 +486,7 @@ export function generateEphemeralKey(): ProjectCryptoResult<Uint8Array> {
     if (!key || key.length !== 32) {
       return {
         data: null,
-        error: new Error('Key generation failed'),
+        error: 'Key generation failed',
         message: 'Failed to generate ephemeral key',
       };
     }
@@ -482,9 +497,10 @@ export function generateEphemeralKey(): ProjectCryptoResult<Uint8Array> {
       message: 'Ephemeral key generated successfully',
     };
   } catch (error) {
+    console.error(error);
     return {
       data: null,
-      error,
+      error: 'Failed to generate ephemeral key: ',
       message: 'Failed to generate ephemeral key',
     };
   }
@@ -501,7 +517,7 @@ export async function createShareableWrappedKey(
     if (!projectKey || projectKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid project key'),
+        error: 'Invalid project key',
         message: 'Project key must be 32 bytes',
       };
     }
@@ -509,7 +525,7 @@ export async function createShareableWrappedKey(
     if (!inviteeEmail || typeof inviteeEmail !== 'string' || !inviteeEmail.includes('@')) {
       return {
         data: null,
-        error: new Error('Invalid email'),
+        error: 'Invalid email',
         message: 'Valid invitee email is required',
       };
     }
@@ -517,7 +533,7 @@ export async function createShareableWrappedKey(
     if (!ephemeralKey || ephemeralKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid ephemeral key'),
+        error: 'Invalid ephemeral key',
         message: 'Ephemeral key must be 32 bytes',
       };
     }
@@ -532,9 +548,10 @@ export async function createShareableWrappedKey(
       const info = new TextEncoder().encode('share-key-v1');
       shareKey = hkdf(sha256, ephemeralKey, new Uint8Array(emailHash), info, 32);
     } catch (error) {
+      console.error(error);
       return {
         data: null,
-        error,
+        error: 'Failed to derive share-specific key: ',
         message: 'Failed to derive share-specific key',
       };
     }
@@ -546,10 +563,11 @@ export async function createShareableWrappedKey(
       ephemeralPrivateKey = x25519.utils.randomSecretKey();
       ephemeralPublicKey = x25519.getPublicKey(ephemeralPrivateKey);
     } catch (error) {
+      console.error(error);
       secureWipe(shareKey);
       return {
         data: null,
-        error,
+        error: 'Failed to generate ephemeral key pair for sharing: ',
         message: 'Failed to generate ephemeral key pair for sharing',
       };
     }
@@ -576,7 +594,7 @@ export async function createShareableWrappedKey(
       secureWipe(shareKey);
       return {
         data: null,
-        error: new Error('Base64 encoding failed'),
+        error: 'Base64 encoding failed',
         message: 'Failed to encode shareable wrapped key components',
       };
     }
@@ -599,9 +617,10 @@ export async function createShareableWrappedKey(
       message: 'Shareable wrapped key created successfully',
     };
   } catch (error) {
+    console.error(error);
     return {
       data: null,
-      error,
+      error: 'Failed to create shareable wrapped key: ',
       message: 'Failed to create shareable wrapped key',
     };
   }

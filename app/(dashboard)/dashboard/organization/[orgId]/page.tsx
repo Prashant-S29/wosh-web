@@ -17,7 +17,7 @@ import { AvailableProjects } from '@/components/dashboard/feature/project';
 
 const Organization: React.FC = () => {
   const params = useParams();
-  const id = params.id as string;
+  const id = params.orgId as string;
 
   useCheckAuthClient({
     redirectTo: '/login',

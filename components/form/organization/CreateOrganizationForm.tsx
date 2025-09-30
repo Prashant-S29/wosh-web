@@ -21,7 +21,7 @@ import { CreateOrganizationResponse, GetSessionResponse } from '@/types/api/resp
 // utils and hooks
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTypedMutation, useTypedQuery } from '@/hooks';
+import { useCopyToClipboard, useTypedMutation, useTypedQuery } from '@/hooks';
 
 // Components
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Shield, Copy, Download, AlertTriangle, Smartphone } from 'lucide-react';
+import { Eye, EyeOff, Shield, Copy, AlertTriangle, Smartphone } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreateOrganizationRequest } from '@/types/api/request';
@@ -53,6 +53,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
   // helper
   const queryClient = useQueryClient();
+  const { copyToClipboard } = useCopyToClipboard();
   const router = useRouter();
 
   // states
@@ -60,11 +61,9 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
   const [showConfirmPassphrase, setShowConfirmPassphrase] = useState(false);
   const [showPin, setShowPin] = useState(false);
   const [showConfirmPin, setShowConfirmPin] = useState(false);
-  const [isPassphraseGenerated, setIsPassphraseGenerated] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
   const [deviceConfidence, setDeviceConfidence] = useState<'high' | 'medium' | 'low'>('low');
   const [isGeneratingFingerprint, setIsGeneratingFingerprint] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>();
 
   // mutation
@@ -90,6 +89,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       pin: '',
       confirmPin: '',
       enablePinProtection: false,
+      signedUndertaking: false,
     },
   });
 
@@ -120,26 +120,22 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
   }, []);
 
   const onSubmit = async (data: CreateOrganizationSchemaType) => {
-    setIsLoading(true);
     try {
       // Check if secure storage is available
       const storageAvailable = secureStorage.isAvailable();
       if (!storageAvailable.data) {
         console.error('Storage check failed:', storageAvailable.error);
         toast.error(storageAvailable.message);
-        setIsLoading(false);
         return;
       }
 
       if (!sessionData?.data?.user.id) {
         toast.error('You must be logged in to create an organization');
-        setIsLoading(false);
         return;
       }
 
       if (!deviceFingerprint) {
         toast.error('Device fingerprint is required for security');
-        setIsLoading(false);
         return;
       }
 
@@ -159,12 +155,10 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       if (!orgKeys.data) {
         console.error('MKDF key generation failed:', orgKeys.error);
         toast.error('Failed to create organization keys');
-        setIsLoading(false);
         return;
       }
 
       console.log('orgKeys.data', orgKeys.data);
-      setIsLoading(false);
 
       // check is device is correctly registered
       if (
@@ -175,7 +169,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
         !orgKeys.data.combinationSalt
       ) {
         toast.error('Device registration failed');
-        setIsLoading(false);
         return;
       }
 
@@ -289,46 +282,27 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
     form.setValue('masterPassphrase', passphrase);
     form.setValue('confirmPassphrase', passphrase);
-    setIsPassphraseGenerated(true);
 
     // Copy to clipboard
-    try {
-      await navigator.clipboard.writeText(passphrase);
+    const { success } = await copyToClipboard(passphrase);
+
+    if (success) {
       toast.success('Secure passphrase generated and copied to clipboard');
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-      toast.success('Secure passphrase generated');
-      toast.error('Failed to copy to clipboard');
+    } else {
+      toast.error('Failed to copy passphrase');
     }
   };
 
-  const copyPassphraseToClipboard = async () => {
+  const copyCredentials = async () => {
     const passphrase = form.watch('masterPassphrase');
+    const orgName = form.watch('organizationName') || 'organization';
+
     if (!passphrase) {
       toast.error('No passphrase to copy');
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(passphrase);
-      toast.success('Passphrase copied to clipboard');
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-      toast.error('Failed to copy to clipboard');
-    }
-  };
-
-  const downloadPassphrase = () => {
-    const passphrase = form.watch('masterPassphrase');
-    const orgName = form.watch('organizationName') || 'organization';
-
-    if (!passphrase) {
-      toast.error('No passphrase to download');
-      return;
-    }
-
     const generatedAt = new Date().toISOString();
-    const fileName = `wosh-org-${orgName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${generatedAt}-passphrase.txt`;
 
     let content = `Organization: ${orgName}\nMaster Passphrase: ${passphrase}\n\nSECURITY FEATURES:\n`;
     content += `- Multi-Factor Key Derivation (MKDF) enabled\n`;
@@ -340,18 +314,13 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     content += `IMPORTANT: Store this information securely. Once lost, we cannot recover it.\n`;
     content += `Generated: ${generatedAt}`;
 
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
+    const { success } = await copyToClipboard(content);
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    toast.success('Security credentials downloaded successfully');
+    if (success) {
+      toast.success('Security credentials copied successfully');
+    } else {
+      toast.error('Failed to copy security credentials');
+    }
   };
 
   return (
@@ -389,22 +358,22 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
               </CardHeader>
             </Card>
 
-            {isPassphraseGenerated && (
+            {form.watch('signedUndertaking') && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Attention Needed</AlertTitle>
                 <AlertDescription>
-                  Download your security credentials before proceeding. This includes your
-                  passphrase and PIN (if enabled). Loss of these credentials means permanent loss of
-                  access to your organization data.
+                  Copy your security credentials before proceeding. This includes your passphrase
+                  and PIN (if enabled). Loss of these credentials means permanent loss of access to
+                  your organization data.
                   <Button
                     variant="destructive"
                     size="sm"
                     className="mt-3 w-full"
-                    onClick={downloadPassphrase}
+                    onClick={copyCredentials}
                   >
-                    <Download className="mr-1 h-4 w-4" />
-                    Download Security Credentials
+                    <Copy className="mr-1 h-4 w-4" />
+                    Copy Security Credentials
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -469,18 +438,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
                               {...field}
                             />
                             <div className="absolute top-0 right-0 flex h-full">
-                              {field.value && (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-full px-3"
-                                  onClick={copyPassphraseToClipboard}
-                                  title="Copy passphrase"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                              )}
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -645,11 +602,45 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
                   />
                 </div>
 
+                {/* Undertaking */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium">Undertaking</h3>
+
+                  <FormField
+                    control={form.control}
+                    name="signedUndertaking"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-y-0 space-x-3">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={form.formState.isSubmitting}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Important Security Notice</FormLabel>
+                          <FormDescription>
+                            I confirm that in case of losing all the credentials, I might get
+                            completely locked out of this organization. These credentials cannot be
+                            recovered and will result in permanent loss of access to organization
+                            data.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <div className="flex flex-col gap-3">
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={form.formState.isSubmitting || isGeneratingFingerprint || isLoading}
+                    disabled={
+                      form.formState.isSubmitting ||
+                      isGeneratingFingerprint ||
+                      !form.watch('signedUndertaking')
+                    }
                   >
                     {form.formState.isSubmitting
                       ? `Creating ${form.watch('organizationName')}...`

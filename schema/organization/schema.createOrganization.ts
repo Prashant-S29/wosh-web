@@ -16,6 +16,7 @@ export const CreateOrganizationSchema = z
       }),
     confirmPin: z.string().optional(),
     enablePinProtection: z.boolean(),
+    signedUndertaking: z.boolean(),
   })
   .refine((data) => data.masterPassphrase === data.confirmPassphrase, {
     message: "Passphrases don't match",

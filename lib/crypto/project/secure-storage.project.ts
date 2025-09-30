@@ -36,7 +36,7 @@ export async function storeProjectKey(
     if (!projectId || !organizationId) {
       return {
         data: null,
-        error: new Error('Missing required parameters'),
+        error: 'Missing required parameters',
         message: 'Project ID and Organization ID are required',
       };
     }
@@ -44,7 +44,7 @@ export async function storeProjectKey(
     if (!projectKey || projectKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid project key'),
+        error: 'Invalid project key',
         message: 'Project key must be 32 bytes',
       };
     }
@@ -52,7 +52,7 @@ export async function storeProjectKey(
     if (!storageKey || storageKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid storage key'),
+        error: 'Invalid storage key',
         message: 'Storage key must be 32 bytes',
       };
     }
@@ -60,7 +60,7 @@ export async function storeProjectKey(
     if (!wrappedKey || !wrappedKey.ciphertext || !wrappedKey.iv) {
       return {
         data: null,
-        error: new Error('Invalid wrapped key'),
+        error: 'Invalid wrapped key',
         message: 'Wrapped key is incomplete or invalid',
       };
     }
@@ -70,9 +70,10 @@ export async function storeProjectKey(
     try {
       db = await initWoshDB();
     } catch (dbError) {
+      console.error('Failed to initialize database:', dbError);
       return {
         data: null,
-        error: dbError,
+        error: 'Failed to initialize database',
         message: 'Failed to initialize database',
       };
     }
@@ -96,9 +97,10 @@ export async function storeProjectKey(
         toBufferSource(projectKey),
       );
     } catch (cryptoError) {
+      console.error('Failed to encrypt project key for storage:', cryptoError);
       return {
         data: null,
-        error: cryptoError,
+        error: 'Failed to encrypt project key for storage',
         message: 'Failed to encrypt project key for storage',
       };
     }
@@ -134,7 +136,7 @@ export async function storeProjectKey(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to store project key in IndexedDB',
             message: 'Failed to store project key in IndexedDB',
           });
         };
@@ -149,7 +151,7 @@ export async function storeProjectKey(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while storing project key',
             message: 'Transaction failed while storing project key',
           });
         };
@@ -157,22 +159,24 @@ export async function storeProjectKey(
         transaction.onabort = () => {
           resolve({
             data: null,
-            error: new Error('Transaction aborted'),
+            error: 'Transaction aborted',
             message: 'Storage transaction was aborted',
           });
         };
       } catch (error) {
+        console.error('Error during project key storage operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during project key storage operation',
           message: 'Error during project key storage operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for project key:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for project key',
       message: 'Failed to initialize storage for project key',
     };
   }
@@ -188,7 +192,7 @@ export async function getProjectKey(
     if (!projectId) {
       return {
         data: null,
-        error: new Error('Missing project ID'),
+        error: 'Missing project ID',
         message: 'Project ID is required',
       };
     }
@@ -196,7 +200,7 @@ export async function getProjectKey(
     if (!storageKey || storageKey.length !== 32) {
       return {
         data: null,
-        error: new Error('Invalid storage key'),
+        error: 'Invalid storage key',
         message: 'Storage key must be 32 bytes',
       };
     }
@@ -206,9 +210,10 @@ export async function getProjectKey(
     try {
       db = await initWoshDB();
     } catch (dbError) {
+      console.error('Failed to initialize database:', dbError);
       return {
         data: null,
-        error: dbError,
+        error: 'Failed to initialize database',
         message: 'Failed to initialize database',
       };
     }
@@ -306,16 +311,18 @@ export async function getProjectKey(
         message: 'Project key retrieved and decrypted successfully',
       };
     } catch (cryptoError) {
+      console.error('Failed to decrypt project key from storage:', cryptoError);
       return {
         data: null,
-        error: cryptoError,
+        error: 'Failed to decrypt project key from storage',
         message: 'Failed to decrypt project key from storage',
       };
     }
   } catch (error) {
+    console.error('Failed to initialize storage for project key retrieval:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for project key retrieval',
       message: 'Failed to initialize storage for project key retrieval',
     };
   }
@@ -329,7 +336,7 @@ export async function getWrappedProjectKey(
     if (!projectId) {
       return {
         data: null,
-        error: new Error('Missing project ID'),
+        error: 'Missing project ID',
         message: 'Project ID is required',
       };
     }
@@ -345,7 +352,7 @@ export async function getWrappedProjectKey(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to retrieve wrapped project key from IndexedDB',
             message: 'Failed to retrieve wrapped project key from IndexedDB',
           });
         };
@@ -370,22 +377,24 @@ export async function getWrappedProjectKey(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while retrieving wrapped key',
             message: 'Transaction failed while retrieving wrapped key',
           });
         };
       } catch (error) {
+        console.error('Error during wrapped key retrieval operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during wrapped key retrieval operation',
           message: 'Error during wrapped key retrieval operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for wrapped key retrieval:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for wrapped key retrieval',
       message: 'Failed to initialize storage for wrapped key retrieval',
     };
   }
@@ -397,7 +406,7 @@ export async function hasProjectKey(projectId: string): Promise<ProjectStorageRe
     if (!projectId) {
       return {
         data: false,
-        error: new Error('Missing project ID'),
+        error: 'Missing project ID',
         message: 'Project ID is required',
       };
     }
@@ -413,7 +422,7 @@ export async function hasProjectKey(projectId: string): Promise<ProjectStorageRe
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to check project key existence',
             message: 'Failed to check project key existence',
           });
         };
@@ -430,22 +439,24 @@ export async function hasProjectKey(projectId: string): Promise<ProjectStorageRe
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while checking key existence',
             message: 'Transaction failed while checking key existence',
           });
         };
       } catch (error) {
+        console.error('Error during key existence check:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during key existence check',
           message: 'Error during key existence check',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for key existence check:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for key existence check',
       message: 'Failed to initialize storage for key existence check',
     };
   }
@@ -459,7 +470,7 @@ export async function listProjectsForOrg(
     if (!organizationId) {
       return {
         data: null,
-        error: new Error('Missing organization ID'),
+        error: 'Missing organization ID',
         message: 'Organization ID is required',
       };
     }
@@ -476,7 +487,7 @@ export async function listProjectsForOrg(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to list projects for organization',
             message: 'Failed to list projects for organization',
           });
         };
@@ -492,22 +503,24 @@ export async function listProjectsForOrg(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while listing projects',
             message: 'Transaction failed while listing projects',
           });
         };
       } catch (error) {
+        console.error('Error during project listing operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during project listing operation',
           message: 'Error during project listing operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for project listing:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for project listing',
       message: 'Failed to initialize storage for project listing',
     };
   }
@@ -519,7 +532,7 @@ export async function deleteProjectKey(projectId: string): Promise<ProjectStorag
     if (!projectId) {
       return {
         data: null,
-        error: new Error('Missing project ID'),
+        error: 'Missing project ID',
         message: 'Project ID is required',
       };
     }
@@ -535,7 +548,7 @@ export async function deleteProjectKey(projectId: string): Promise<ProjectStorag
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to delete project key from IndexedDB',
             message: 'Failed to delete project key from IndexedDB',
           });
         };
@@ -551,7 +564,7 @@ export async function deleteProjectKey(projectId: string): Promise<ProjectStorag
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while deleting project key',
             message: 'Transaction failed while deleting project key',
           });
         };
@@ -559,22 +572,24 @@ export async function deleteProjectKey(projectId: string): Promise<ProjectStorag
         transaction.onabort = () => {
           resolve({
             data: null,
-            error: new Error('Transaction aborted'),
+            error: 'Transaction aborted',
             message: 'Deletion transaction was aborted',
           });
         };
       } catch (error) {
+        console.error('Error during project key deletion operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during project key deletion operation',
           message: 'Error during project key deletion operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for project key deletion:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for project key deletion',
       message: 'Failed to initialize storage for project key deletion',
     };
   }
@@ -588,7 +603,7 @@ export async function cleanupOldProjectKeys(
     if (maxAgeMs <= 0) {
       return {
         data: null,
-        error: new Error('Invalid max age'),
+        error: 'Invalid max age',
         message: 'Max age must be positive',
       };
     }
@@ -608,7 +623,7 @@ export async function cleanupOldProjectKeys(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to cleanup old project keys',
             message: 'Failed to cleanup old project keys',
           });
         };
@@ -621,9 +636,10 @@ export async function cleanupOldProjectKeys(
               deletedCount++;
               cursor.continue();
             } catch (error) {
+              console.error('Error deleting old project key during cleanup:', error);
               resolve({
                 data: null,
-                error,
+                error: 'Error deleting old project key during cleanup',
                 message: 'Error deleting old project key during cleanup',
               });
             }
@@ -639,22 +655,24 @@ export async function cleanupOldProjectKeys(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed during cleanup',
             message: 'Transaction failed during cleanup',
           });
         };
       } catch (error) {
+        console.error('Error during cleanup operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during cleanup operation',
           message: 'Error during cleanup operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for cleanup:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for cleanup',
       message: 'Failed to initialize storage for cleanup',
     };
   }
@@ -688,7 +706,7 @@ export async function getProjectKeyStorageStats(organizationId?: string): Promis
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to get storage statistics',
             message: 'Failed to get storage statistics',
           });
         };
@@ -725,9 +743,10 @@ export async function getProjectKeyStorageStats(organizationId?: string): Promis
               message: `Storage statistics calculated for ${records.length} projects`,
             });
           } catch (error) {
+            console.error('Error calculating storage statistics:', error);
             resolve({
               data: null,
-              error,
+              error: 'Error calculating storage statistics',
               message: 'Error calculating storage statistics',
             });
           }
@@ -736,22 +755,24 @@ export async function getProjectKeyStorageStats(organizationId?: string): Promis
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while getting statistics',
             message: 'Transaction failed while getting statistics',
           });
         };
       } catch (error) {
+        console.error('Error during statistics operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during statistics operation',
           message: 'Error during statistics operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for statistics:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for statistics',
       message: 'Failed to initialize storage for statistics',
     };
   }

@@ -797,6 +797,7 @@ export async function retrieveOrgPrivateKeyMKDF(
     // Generate factors using the correct stored salts
     const factor1Result = await derivePassphraseKey(passphrase, mainSaltResult.data);
     if (!factor1Result.data) {
+      console.error('factor one failed', factor1Result);
       return {
         data: null,
         error: factor1Result.error,
@@ -805,7 +806,9 @@ export async function retrieveOrgPrivateKeyMKDF(
     }
 
     const factor2Result = deriveDeviceKey(deviceFingerprint, deviceKeySaltResult.data);
+
     if (!factor2Result.data) {
+      console.error('factor two failed', factor2Result);
       return {
         data: null,
         error: factor2Result.error,
@@ -817,6 +820,7 @@ export async function retrieveOrgPrivateKeyMKDF(
     if (pin && requiresPin && pinSaltResult?.data) {
       factor3Result = await derivePinKey(pin, pinSaltResult.data); // USE REAL PIN SALT
       if (!factor3Result.data) {
+        console.error('factor three failed', factor3Result);
         return {
           data: null,
           error: factor3Result.error,
