@@ -16,3 +16,7 @@ export type GetAllAvailableProjectsResponse = {
     hasPrevious: boolean;
   };
 };
+
+export type GetProjectKeysResponse = {
+  wrappedSymmetricKey: string;
+};

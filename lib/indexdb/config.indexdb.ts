@@ -9,7 +9,7 @@ export const STORES = {
 
 export type StoreResult<T> = {
   data: T | null;
-  error: unknown;
+  error: string | null;
   message: string;
 };
 
@@ -136,7 +136,7 @@ export function isSecureStorageAvailable(): StoreResult<boolean> {
     if (!hasIndexedDB) {
       return {
         data: false,
-        error: new Error('IndexedDB not available'),
+        error: 'IndexedDB not available',
         message: 'IndexedDB is not supported in this browser',
       };
     }
@@ -144,7 +144,7 @@ export function isSecureStorageAvailable(): StoreResult<boolean> {
     if (!hasCrypto) {
       return {
         data: false,
-        error: new Error('Web Crypto API not available'),
+        error: 'Web Crypto API not available',
         message: 'Web Crypto API is not supported in this browser',
       };
     }
@@ -155,9 +155,10 @@ export function isSecureStorageAvailable(): StoreResult<boolean> {
       message: 'Secure storage is available',
     };
   } catch (error) {
+    console.error('Error checking secure storage availability:', error);
     return {
       data: false,
-      error,
+      error: 'Error checking secure storage availability',
       message: 'Error checking secure storage availability',
     };
   }

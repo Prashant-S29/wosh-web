@@ -25,7 +25,7 @@ export async function storeOrgKeysMKDF(
     if (!organizationId || !userId) {
       return {
         data: null,
-        error: new Error('Missing parameters'),
+        error: 'Missing parameters',
         message: 'Organization ID and User ID are required',
       };
     }
@@ -42,7 +42,7 @@ export async function storeOrgKeysMKDF(
     ) {
       return {
         data: null,
-        error: new Error('Incomplete MKDF keys'),
+        error: 'Incomplete MKDF keys',
         message: 'All MKDF key components are required',
       };
     }
@@ -52,9 +52,11 @@ export async function storeOrgKeysMKDF(
     try {
       db = await initWoshDB();
     } catch (dbError) {
+      console.error('Failed to initialize database:', dbError);
+
       return {
         data: null,
-        error: dbError,
+        error: 'Failed to initialize database',
         message: 'Failed to initialize database',
       };
     }
@@ -87,7 +89,7 @@ export async function storeOrgKeysMKDF(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to store MKDF organization keys in IndexedDB',
             message: 'Failed to store MKDF organization keys in IndexedDB',
           });
         };
@@ -103,7 +105,7 @@ export async function storeOrgKeysMKDF(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while storing MKDF keys',
             message: 'Transaction failed while storing MKDF keys',
           });
         };
@@ -111,22 +113,24 @@ export async function storeOrgKeysMKDF(
         transaction.onabort = () => {
           resolve({
             data: null,
-            error: new Error('Transaction aborted'),
+            error: 'Transaction aborted',
             message: 'MKDF storage transaction was aborted',
           });
         };
       } catch (error) {
+        console.error('Error during MKDF key storage operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during MKDF key storage operation',
           message: 'Error during MKDF key storage operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for saving MKDF keys:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for saving MKDF keys',
       message: 'Failed to initialize storage for saving MKDF keys',
     };
   }
@@ -142,7 +146,7 @@ export async function getOrgKeysMKDF(
     if (!organizationId || !userId) {
       return {
         data: null,
-        error: new Error('Missing parameters'),
+        error: 'Missing parameters',
         message: 'Organization ID and User ID are required',
       };
     }
@@ -152,9 +156,10 @@ export async function getOrgKeysMKDF(
     try {
       db = await initWoshDB();
     } catch (dbError) {
+      console.error('Failed to initialize database:', dbError);
       return {
         data: null,
-        error: dbError,
+        error: 'Failed to initialize database',
         message: 'Failed to initialize database',
       };
     }
@@ -168,7 +173,7 @@ export async function getOrgKeysMKDF(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to retrieve MKDF organization keys from IndexedDB',
             message: 'Failed to retrieve MKDF organization keys from IndexedDB',
           });
         };
@@ -189,7 +194,7 @@ export async function getOrgKeysMKDF(
           if (result.userId !== userId) {
             resolve({
               data: null,
-              error: new Error('Access denied'),
+              error: 'Access denied',
               message: 'Access denied: You do not have permission to access these keys',
             });
             return;
@@ -211,7 +216,7 @@ export async function getOrgKeysMKDF(
             if (!isMKDFData) {
               resolve({
                 data: null,
-                error: new Error('Legacy keys found'),
+                error: 'Legacy keys found',
                 message: 'Legacy organization keys found. MKDF upgrade required.',
               });
               return;
@@ -240,9 +245,10 @@ export async function getOrgKeysMKDF(
               message: 'MKDF organization keys retrieved successfully',
             });
           } catch (error) {
+            console.error('Error processing retrieved MKDF keys:', error);
             resolve({
               data: null,
-              error,
+              error: 'Error processing retrieved MKDF keys',
               message: 'Error processing retrieved MKDF keys',
             });
           }
@@ -251,7 +257,7 @@ export async function getOrgKeysMKDF(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while retrieving MKDF keys',
             message: 'Transaction failed while retrieving MKDF keys',
           });
         };
@@ -259,22 +265,24 @@ export async function getOrgKeysMKDF(
         transaction.onabort = () => {
           resolve({
             data: null,
-            error: new Error('Transaction aborted'),
+            error: 'Transaction aborted',
             message: 'MKDF retrieval transaction was aborted',
           });
         };
       } catch (error) {
+        console.error('Error during MKDF key retrieval operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during MKDF key retrieval operation',
           message: 'Error during MKDF key retrieval operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for retrieving MKDF keys:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for retrieving MKDF keys',
       message: 'Failed to initialize storage for retrieving MKDF keys',
     };
   }
@@ -318,9 +326,10 @@ export async function hasOrgKeysMKDF(
       message: result.data ? 'MKDF keys exist' : 'No MKDF keys found',
     };
   } catch (error) {
+    console.error('Error checking if MKDF organization keys exist:', error);
     return {
       data: null,
-      error,
+      error: 'Error checking if MKDF organization keys exist',
       message: 'Error checking if MKDF organization keys exist',
     };
   }
@@ -353,9 +362,10 @@ export async function verifyDeviceFingerprint(
       message: matches ? 'Device fingerprint verified' : 'Device fingerprint mismatch',
     };
   } catch (error) {
+    console.error('Failed to verify device fingerprint:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to verify device fingerprint',
       message: 'Failed to verify device fingerprint',
     };
   }
@@ -372,7 +382,7 @@ export async function storeOrgKeys(
     if (!organizationId || !userId) {
       return {
         data: null,
-        error: new Error('Missing parameters'),
+        error: 'Missing parameters',
         message: 'Organization ID and User ID are required',
       };
     }
@@ -380,7 +390,7 @@ export async function storeOrgKeys(
     if (!keys.publicKey || !keys.privateKeyEncrypted || !keys.salt || !keys.iv) {
       return {
         data: null,
-        error: new Error('Incomplete keys'),
+        error: 'Incomplete keys',
         message: 'All key components are required',
       };
     }
@@ -390,9 +400,10 @@ export async function storeOrgKeys(
     try {
       db = await initWoshDB();
     } catch (dbError) {
+      console.error('Failed to initialize database:', dbError);
       return {
         data: null,
-        error: dbError,
+        error: 'Failed to initialize database',
         message: 'Failed to initialize database',
       };
     }
@@ -414,7 +425,7 @@ export async function storeOrgKeys(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to store organization keys in IndexedDB',
             message: 'Failed to store organization keys in IndexedDB',
           });
         };
@@ -430,7 +441,7 @@ export async function storeOrgKeys(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while storing keys',
             message: 'Transaction failed while storing keys',
           });
         };
@@ -438,22 +449,24 @@ export async function storeOrgKeys(
         transaction.onabort = () => {
           resolve({
             data: null,
-            error: new Error('Transaction aborted'),
+            error: 'Transaction aborted',
             message: 'Storage transaction was aborted',
           });
         };
       } catch (error) {
+        console.error('Error during key storage operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during key storage operation',
           message: 'Error during key storage operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for saving keys:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for saving keys',
       message: 'Failed to initialize storage for saving keys',
     };
   }
@@ -469,7 +482,7 @@ export async function getOrgKeys(
     if (!organizationId || !userId) {
       return {
         data: null,
-        error: new Error('Missing parameters'),
+        error: 'Missing parameters',
         message: 'Organization ID and User ID are required',
       };
     }
@@ -479,9 +492,10 @@ export async function getOrgKeys(
     try {
       db = await initWoshDB();
     } catch (dbError) {
+      console.error('Failed to initialize database:', dbError);
       return {
         data: null,
-        error: dbError,
+        error: 'Failed to initialize database',
         message: 'Failed to initialize database',
       };
     }
@@ -495,7 +509,7 @@ export async function getOrgKeys(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to retrieve organization keys from IndexedDB',
             message: 'Failed to retrieve organization keys from IndexedDB',
           });
         };
@@ -516,7 +530,7 @@ export async function getOrgKeys(
           if (result.userId !== userId) {
             resolve({
               data: null,
-              error: new Error('Access denied'),
+              error: 'Access denied',
               message: 'Access denied: You do not have permission to access these keys',
             });
             return;
@@ -545,9 +559,10 @@ export async function getOrgKeys(
               message: 'Organization keys retrieved successfully',
             });
           } catch (error) {
+            console.error('Error processing retrieved keys:', error);
             resolve({
               data: null,
-              error,
+              error: 'Error processing retrieved keys',
               message: 'Error processing retrieved keys',
             });
           }
@@ -556,7 +571,7 @@ export async function getOrgKeys(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while retrieving keys',
             message: 'Transaction failed while retrieving keys',
           });
         };
@@ -564,22 +579,24 @@ export async function getOrgKeys(
         transaction.onabort = () => {
           resolve({
             data: null,
-            error: new Error('Transaction aborted'),
+            error: 'Transaction aborted',
             message: 'Retrieval transaction was aborted',
           });
         };
       } catch (error) {
+        console.error('Error during key retrieval operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during key retrieval operation',
           message: 'Error during key retrieval operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for retrieving keys:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for retrieving keys',
       message: 'Failed to initialize storage for retrieving keys',
     };
   }
@@ -607,9 +624,10 @@ export async function hasOrgKeys(
       message: result.data ? 'Keys exist' : 'Keys do not exist',
     };
   } catch (error) {
+    console.error('Error checking if organization keys exist:', error);
     return {
       data: null,
-      error,
+      error: 'Error checking if organization keys exist',
       message: 'Error checking if organization keys exist',
     };
   }
@@ -625,7 +643,7 @@ export async function deleteOrgKeys(
     if (!organizationId || !userId) {
       return {
         data: null,
-        error: new Error('Missing parameters'),
+        error: 'Missing parameters',
         message: 'Organization ID and User ID are required',
       };
     }
@@ -659,7 +677,7 @@ export async function deleteOrgKeys(
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to delete organization keys',
             message: 'Failed to delete organization keys',
           });
         };
@@ -675,22 +693,24 @@ export async function deleteOrgKeys(
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while deleting keys',
             message: 'Transaction failed while deleting keys',
           });
         };
       } catch (error) {
+        console.error('Error during key deletion operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during key deletion operation',
           message: 'Error during key deletion operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for deleting keys:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for deleting keys',
       message: 'Failed to initialize storage for deleting keys',
     };
   }
@@ -702,7 +722,7 @@ export async function clearAllKeys(userId: string): Promise<StoreResult<null>> {
     if (!userId) {
       return {
         data: null,
-        error: new Error('Missing user ID'),
+        error: 'Missing user ID',
         message: 'User ID is required for clearing keys',
       };
     }
@@ -736,7 +756,7 @@ export async function clearAllKeys(userId: string): Promise<StoreResult<null>> {
         request.onerror = () => {
           resolve({
             data: null,
-            error: request.error,
+            error: 'Failed to clear organization keys',
             message: 'Failed to clear organization keys',
           });
         };
@@ -744,22 +764,24 @@ export async function clearAllKeys(userId: string): Promise<StoreResult<null>> {
         transaction.onerror = () => {
           resolve({
             data: null,
-            error: transaction.error,
+            error: 'Transaction failed while clearing keys',
             message: 'Transaction failed while clearing keys',
           });
         };
       } catch (error) {
+        console.error('Error during key clearing operation:', error);
         resolve({
           data: null,
-          error,
+          error: 'Error during key clearing operation',
           message: 'Error during key clearing operation',
         });
       }
     });
   } catch (error) {
+    console.error('Failed to initialize storage for clearing keys:', error);
     return {
       data: null,
-      error,
+      error: 'Failed to initialize storage for clearing keys',
       message: 'Failed to initialize storage for clearing keys',
     };
   }

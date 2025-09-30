@@ -52,16 +52,14 @@ import {
 } from '@/lib/crypto/project';
 import { generateDeviceFingerprint } from '@/lib/crypto/org/device-fingerprint';
 import { ProjectsMKDFConfig } from '@/types/encryptions';
+import { ProjectKeyCredentials } from '@/hooks/useProjectKey';
 
 interface CreateProjectFormProps {
   setOpen?: (open: boolean) => void;
   organizationId: string;
 }
 
-interface ProjectFormData extends CreateProjectSchemaType {
-  masterPassphrase: string;
-  pin?: string | undefined;
-}
+interface ProjectFormData extends CreateProjectSchemaType, ProjectKeyCredentials {}
 
 // Dynamic schema based on MKDF requirements
 const createProjectFormSchema = (mkdfConfig: ProjectsMKDFConfig | null) => {
