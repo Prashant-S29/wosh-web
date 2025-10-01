@@ -64,9 +64,9 @@ export const LoginForm: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: LoginSchemaType) => {
+  const onSubmit = async (data: LoginSchemaType) => {
     console.log('Login form data:', data);
-    loginMutation.mutate(data);
+    await loginMutation.mutateAsync(data);
   };
 
   return (
@@ -122,7 +122,7 @@ export const LoginForm: React.FC = () => {
               />
 
               <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
                 </Button>
                 <ContinueWithGoogle />
