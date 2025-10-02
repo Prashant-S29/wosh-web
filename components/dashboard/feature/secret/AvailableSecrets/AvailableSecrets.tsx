@@ -47,6 +47,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SecretAuthModal } from '@/components/common';
+
+// hooks
+import { useMKDFConfig } from '@/hooks/useMKDFConfig';
+import { useSecretAuthentication } from '@/hooks/useSecretAuthentication';
+import { toast } from 'sonner';
+import { decryptSecretsArray } from '@/lib/crypto/secret/crypto-utils.secret';
 
 const columnHelper = createColumnHelper<Secrets>();
 
@@ -56,11 +63,97 @@ interface AvailableSecretsProps {
   userId: string;
 }
 
-export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({ projectId }) => {
+// Helper function to download as CSV
+const downloadAsCSV = (
+  secrets: Array<{
+    key: string;
+    value?: string | null | undefined;
+    note?: string | null | undefined;
+  }>,
+) => {
+  const csvRows = [
+    ['Key', 'Value', 'Note'].join(','),
+    ...secrets.map((secret) => {
+      const key = `"${(secret.key || '').replace(/"/g, '""')}"`;
+      const value = `"${(secret.value || '').replace(/"/g, '""')}"`;
+      const note = `"${(secret.note || '').replace(/"/g, '""')}"`;
+      return [key, value, note].join(',');
+    }),
+  ].join('\n');
+
+  const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', `secrets_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// Helper function to download as .env
+const downloadAsEnv = (
+  secrets: Array<{
+    key: string;
+    value?: string | null | undefined;
+    note?: string | null | undefined;
+  }>,
+) => {
+  const envContent = secrets
+    .map((secret) => {
+      const lines = [];
+      if (secret.note) {
+        lines.push(`# ${secret.note}`);
+      }
+      const value =
+        (secret.value || '').includes('\n') || (secret.value || '').includes(' ')
+          ? `"${secret.value}"`
+          : secret.value || '';
+      lines.push(`${secret.key}=${value}`);
+      return lines.join('\n');
+    })
+    .join('\n\n');
+
+  const blob = new Blob([envContent], { type: 'text/plain;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.setAttribute('href', url);
+  link.setAttribute('download', `.env.${new Date().toISOString().split('T')[0]}`);
+  link.style.visibility = 'hidden';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
+  projectId,
+  organizationId,
+  userId,
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [exportFormat, setExportFormat] = useState<'csv' | 'env'>('env');
+
+  // Use MKDF config hook
+  const { mkdfConfig } = useMKDFConfig({
+    organizationId,
+    userId,
+    enabled: !!userId,
+  });
+
+  const { showAuthModal, isAuthenticating, openAuthModal, closeAuthModal, handleAuthentication } =
+    useSecretAuthentication<Secrets[]>({
+      projectId,
+      organizationId,
+      userId,
+    });
 
   // Debounce
   useEffect(() => {
@@ -74,7 +167,15 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({ projectId })
 
   const handleCopySecret = () => {};
 
-  const handleExport = () => {};
+  const handleExport = (format: 'csv' | 'env') => {
+    const secrets = allSecrets?.data?.allSecrets || [];
+    if (!secrets.length) {
+      toast.error('No secrets to export');
+      return;
+    }
+    setExportFormat(format);
+    openAuthModal(secrets);
+  };
 
   // Build query parameters
   const buildQueryParams = () => {
@@ -88,6 +189,33 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({ projectId })
     }
 
     return params.toString();
+  };
+
+  // Success callback for authentication
+  const onAuthenticationSuccess = async (projectKey: Uint8Array, secrets: Secrets[]) => {
+    if (!secrets.length) {
+      toast.error('No secrets to decrypt');
+      return;
+    }
+
+    const decryptResult = await decryptSecretsArray({
+      encryptedSecrets: secrets,
+      projectKey,
+    });
+
+    if (decryptResult.error || !decryptResult.data) {
+      toast.error(decryptResult.message || 'Failed to decrypt secrets');
+      return;
+    }
+
+    // Download based on selected format
+    if (exportFormat === 'csv') {
+      downloadAsCSV(decryptResult.data);
+      toast.success(`Exported ${decryptResult.data.length} secrets as CSV`);
+    } else {
+      downloadAsEnv(decryptResult.data);
+      toast.success(`Exported ${decryptResult.data.length} secrets as .env file`);
+    }
   };
 
   const {
@@ -209,10 +337,16 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({ projectId })
             )}
           </CardDescription>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={handleExport}>
-          <Download className="h-4 w-4" />
-          Export
-        </Button>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => handleExport('env')}>
+            <Download className="mr-2 h-4 w-4" />
+            Export .env
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => handleExport('csv')}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -422,6 +556,18 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({ projectId })
             </div>
           )}
         </div>
+
+        <SecretAuthModal
+          isOpen={showAuthModal}
+          onClose={closeAuthModal}
+          onAuth={(credentials) =>
+            handleAuthentication(credentials.credentials, onAuthenticationSuccess)
+          }
+          requiresPin={mkdfConfig?.requiresPin ?? false}
+          isLoading={isAuthenticating}
+          title="Decrypt Secrets"
+          description="Enter your credentials to decrypt and export secrets."
+        />
       </CardContent>
     </Card>
   );

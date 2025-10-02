@@ -1,32 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-
-// Schema
+import React, { useState } from 'react';
 import { CreateProjectSchema, type CreateProjectSchemaType } from '@/schema/project';
-
-// RHF and zod
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-
-// Types
-import {
-  GetSessionResponse,
-  RecoverOrgKeysResponse,
-  CreateProjectResponse,
-} from '@/types/api/response';
+import { GetSessionResponse, CreateProjectResponse } from '@/types/api/response';
 import { CreateProjectRequest } from '@/types/api/request';
-
-// Utils and hooks
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTypedMutation, useTypedQuery } from '@/hooks';
-
-// icons
+import { useMKDFConfig } from '@/hooks/useMKDFConfig';
 import { Eye, EyeOff, Shield, Loader2, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
-
-// Components
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -40,8 +25,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-// Crypto utilities
 import { secureStorage } from '@/lib/crypto/org/secure-storage.org';
 import { retrieveOrgPrivateKeyMKDF, secureWipe } from '@/lib/crypto/org/crypto-utils.org';
 import {
@@ -50,7 +33,6 @@ import {
   deriveProjectStorageKey,
   projectSecureStorage,
 } from '@/lib/crypto/project';
-import { generateDeviceFingerprint } from '@/lib/crypto/org/device-fingerprint';
 import { ProjectsMKDFConfig } from '@/types/encryptions';
 import { ProjectKeyCredentials } from '@/hooks/useProjectKey';
 
@@ -61,7 +43,6 @@ interface CreateProjectFormProps {
 
 interface ProjectFormData extends CreateProjectSchemaType, ProjectKeyCredentials {}
 
-// Dynamic schema based on MKDF requirements
 const createProjectFormSchema = (mkdfConfig: ProjectsMKDFConfig | null) => {
   const baseSchema = CreateProjectSchema.extend({
     masterPassphrase: z
@@ -88,38 +69,29 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
   setOpen,
   organizationId,
 }) => {
-  // Auth
   const { token } = useCheckAuthClient();
   const queryClient = useQueryClient();
-
-  // States
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [showPin, setShowPin] = useState(false);
-  const [mkdfConfig, setMkdfConfig] = useState<ProjectsMKDFConfig | null>(null);
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [deviceVerified, setDeviceVerified] = useState(false);
-  const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
 
-  // Queries
   const { data: sessionData } = useTypedQuery<GetSessionResponse>({
     endpoint: '/api/auth/session',
     queryKey: ['user-session', token],
     enabled: !!token,
   });
 
-  const { refetch: refetchOrgKeys } = useTypedQuery<RecoverOrgKeysResponse>({
-    endpoint: `/api/organization/keys?orgId=${organizationId}`,
-    queryKey: ['organization-keys', organizationId, sessionData?.data?.user?.id],
-    enabled: false,
+  // Use MKDF config hook
+  const { mkdfConfig, isLoadingConfig, deviceVerified, deviceFingerprint } = useMKDFConfig({
+    organizationId,
+    userId: sessionData?.data?.user?.id || '',
+    enabled: !!sessionData?.data?.user?.id,
   });
 
-  // Mutations
   const createProjectMutation = useTypedMutation<CreateProjectRequest, CreateProjectResponse>({
     endpoint: '/api/project',
     method: 'POST',
   });
 
-  // Form with dynamic schema
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(createProjectFormSchema(mkdfConfig)),
     defaultValues: {
@@ -129,112 +101,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
     },
   });
 
-  // Load MKDF configuration on mount
-  useEffect(() => {
-    const loadMkdfConfig = async () => {
-      try {
-        setIsLoadingConfig(true);
-
-        if (!sessionData?.data?.user.id) {
-          return;
-        }
-
-        // Generate device fingerprint first
-        const fingerprintResult = await generateDeviceFingerprint();
-        if (fingerprintResult.fingerprint) {
-          setDeviceFingerprint(fingerprintResult.fingerprint);
-          setDeviceVerified(fingerprintResult.confidence !== 'low');
-
-          if (fingerprintResult.confidence === 'low') {
-            toast.warning('Device fingerprinting has low reliability on this device');
-          }
-        }
-
-        // load security configuration from indexdb
-        const orgKeysResult = await secureStorage.getOrgKeysMKDF(
-          organizationId,
-          sessionData.data.user.id,
-        );
-        console.log('orgKeysResult', orgKeysResult);
-
-        // if not found, get from the server
-        if (!orgKeysResult.data) {
-          try {
-            const { data: serverKeysData } = await refetchOrgKeys();
-            console.log('serverKeysData', serverKeysData);
-
-            // if keys not found on server
-            if (!serverKeysData?.data?.factorConfig) {
-              toast.error('Failed to load security configuration from server');
-              return;
-            }
-
-            const mkdfConfigData: ProjectsMKDFConfig = {
-              requiredFactors: serverKeysData.data.factorConfig.requiredFactors,
-              enabledFactors: serverKeysData.data.factorConfig.enabledFactors,
-              requiresPin: serverKeysData.data.factorConfig.enabledFactors.includes('pin'),
-            };
-
-            setMkdfConfig(mkdfConfigData);
-
-            // store the keys back to indexdb
-            const storeOrgKeysResponse = await secureStorage.storeOrgKeysMKDF(
-              organizationId,
-              sessionData.data.user.id,
-              {
-                combinationSalt: serverKeysData.data.deviceInfo.combinationSalt,
-                iv: serverKeysData.data.encryptionIv,
-                publicKey: serverKeysData.data.publicKey,
-                privateKeyEncrypted: serverKeysData.data.privateKeyEncrypted,
-                salt: serverKeysData.data.keyDerivationSalt,
-                ...(serverKeysData.data.deviceInfo.pinSalt
-                  ? { pinSalt: serverKeysData.data.deviceInfo.pinSalt }
-                  : {}),
-                mkdfConfig: {
-                  enabledFactors: mkdfConfigData.enabledFactors,
-                  requiredFactors: mkdfConfigData.requiredFactors,
-                },
-                deviceFingerprint: serverKeysData.data.deviceInfo.deviceFingerprint,
-                deviceKeyEncrypted: serverKeysData.data.deviceInfo.encryptedDeviceKey,
-                deviceKeyIv: serverKeysData.data.deviceInfo.keyDerivationSalt,
-                deviceKeySalt: serverKeysData.data.deviceInfo.keyDerivationSalt,
-                mkdfVersion: serverKeysData.data.mkdfVersion,
-              },
-            );
-
-            if (storeOrgKeysResponse.error) {
-              console.warn('Failed to store MKDF keys locally:', storeOrgKeysResponse.error);
-              toast.warning('Keys retrieved from server but could not be cached locally');
-            } else {
-              console.log('Successfully cached MKDF keys locally');
-            }
-            return;
-          } catch (error) {
-            console.error('Failed to load MKDF config from server:', error);
-            toast.error('Failed to load security configuration from server');
-            return;
-          }
-        }
-
-        // We have local MKDF keys
-        setMkdfConfig({
-          requiresPin: orgKeysResult.data.mkdfConfig.enabledFactors.includes('pin'),
-          requiredFactors: orgKeysResult.data.mkdfConfig.requiredFactors,
-          enabledFactors: orgKeysResult.data.mkdfConfig.enabledFactors,
-        });
-      } catch (error) {
-        console.error('Error loading MKDF configuration:', error);
-        toast.error('Failed to load security configuration');
-      } finally {
-        setIsLoadingConfig(false);
-      }
-    };
-
-    if (sessionData?.data?.user.id) {
-      loadMkdfConfig();
-    }
-  }, [organizationId, refetchOrgKeys, sessionData?.data?.user.id]);
-
   const onSubmit = async (data: ProjectFormData) => {
     let orgPrivateKey: Uint8Array | null = null;
     let projectSymmetricKey: Uint8Array | null = null;
@@ -242,7 +108,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
     try {
       const storageAvailable = secureStorage.isAvailable();
       if (!storageAvailable.data) {
-        console.error('Storage check failed:', storageAvailable.error);
         toast.error(storageAvailable.message);
         return;
       }
@@ -267,10 +132,8 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
         return;
       }
 
-      // MKDF path
       const orgKeysData = orgKeysResult.data;
 
-      // Verify device fingerprint matches
       if (orgKeysData.deviceFingerprint !== deviceFingerprint) {
         toast.error(
           'Device verification failed. This device is not registered for this organization.',
@@ -278,13 +141,11 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
         return;
       }
 
-      // Validate PIN requirement
       if (mkdfConfig?.requiresPin && !data.pin) {
         toast.error('PIN is required for this organization');
         return;
       }
 
-      // Decrypt using MKDF
       const privateKeyResult = await retrieveOrgPrivateKeyMKDF(
         data.masterPassphrase,
         deviceFingerprint,
@@ -292,7 +153,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
         orgKeysData,
       );
 
-      console.log('privateKeyResult', privateKeyResult);
       if (privateKeyResult.error) {
         toast.error(privateKeyResult.message);
         return;
@@ -302,7 +162,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
 
       const projectKeyResult = generateProjectKey();
       if (projectKeyResult.error || !projectKeyResult.data) {
-        console.error('Project key generation failed:', projectKeyResult.error);
         toast.error(projectKeyResult.message);
         return;
       }
@@ -316,12 +175,9 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
 
       const wrappedKeyResult = await wrapProjectKey(projectSymmetricKey, orgPrivateKey);
       if (wrappedKeyResult.error || !wrappedKeyResult.data) {
-        console.error('Project key wrapping failed:', wrappedKeyResult.error);
         toast.error(wrappedKeyResult.message);
         return;
       }
-
-      console.log('wrappedKeyResult', wrappedKeyResult);
 
       const response = await createProjectMutation.mutateAsync({
         name: data.name,
@@ -330,14 +186,12 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
       });
 
       if (!response.data?.id) {
-        console.error('Server failed to create project:', response);
         toast.error('Failed to create project. Please try again.');
         return;
       }
 
       const storageKeyResult = await deriveProjectStorageKey(orgPrivateKey, response.data.id);
       if (storageKeyResult.error || !storageKeyResult.data) {
-        console.error('Storage key derivation failed:', storageKeyResult.error);
         toast.error(storageKeyResult.message);
         return;
       }
@@ -351,7 +205,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
       );
 
       if (storeResult.error) {
-        console.error('Failed to store project key locally:', storeResult.error);
         toast.error(storeResult.message);
         return;
       }
@@ -371,16 +224,10 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
       toast.error('An unexpected error occurred during project creation.');
     } finally {
       if (orgPrivateKey) {
-        const wipeResult = secureWipe(orgPrivateKey);
-        if (wipeResult.error) {
-          console.warn('Failed to wipe organization private key:', wipeResult.error);
-        }
+        secureWipe(orgPrivateKey);
       }
       if (projectSymmetricKey) {
-        const wipeResult = secureWipe(projectSymmetricKey);
-        if (wipeResult.error) {
-          console.warn('Failed to wipe project symmetric key:', wipeResult.error);
-        }
+        secureWipe(projectSymmetricKey);
       }
       form.reset();
       setOpen?.(false);
@@ -403,7 +250,7 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
       {/* Security Status */}
       {mkdfConfig && (
         <Card className="gap-3">
-          <CardHeader className="">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Shield className="h-4 w-4" />
               Security Configuration
@@ -441,7 +288,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Project Name */}
           <FormField
             control={form.control}
             name="name"
@@ -462,7 +308,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
             )}
           />
 
-          {/* Master Passphrase */}
           <FormField
             control={form.control}
             name="masterPassphrase"
@@ -499,7 +344,6 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
             )}
           />
 
-          {/* PIN Field - only show if required by MKDF */}
           {mkdfConfig?.requiresPin && (
             <FormField
               control={form.control}
