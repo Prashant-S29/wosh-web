@@ -1,5 +1,5 @@
 export interface SecretEncryptionResult {
-  ciphertext: string; // Base64 encoded
+  ciphertext: string; // Base64 encoded (includes auth tag for GCM)
   nonce: string; // Base64 encoded
 }
 
@@ -11,7 +11,7 @@ export interface EncryptedSecret {
   keyName: string;
   ciphertext: string;
   nonce: string;
-  note?: string;
+  note?: string | null;
   metadata?: Record<string, string | number | boolean>;
 }
 
@@ -52,15 +52,14 @@ export async function encryptSecretValue(
       plaintext,
     );
 
-    // Extract ciphertext and auth tag
+    // AES-GCM automatically appends the 16-byte auth tag to the ciphertext
+    // Store the entire encrypted buffer (ciphertext + auth tag)
     const encrypted = new Uint8Array(encryptedBuffer);
-    const ciphertext = encrypted.slice(0, -16); // All but last 16 bytes
 
     return {
       data: {
-        ciphertext: btoa(String.fromCharCode(...ciphertext)),
+        ciphertext: btoa(String.fromCharCode(...encrypted)),
         nonce: btoa(String.fromCharCode(...nonce)),
-        // authTag: btoa(String.fromCharCode(...authTag)),
       },
       error: null,
       message: 'Secret encrypted successfully',
@@ -94,8 +93,8 @@ export async function decryptSecretValue({
         .map((char) => char.charCodeAt(0)),
     );
 
-    // Combine ciphertext and auth tag
-
+    // The ciphertext includes the auth tag (last 16 bytes)
+    // Decrypt expects the full buffer: ciphertext + auth tag
     const encryptedData = new Uint8Array(
       atob(encryptedSecret.ciphertext)
         .split('')
@@ -121,7 +120,7 @@ export async function decryptSecretValue({
         additionalData: additionalData,
       },
       cryptoKey,
-      encryptedData,
+      encryptedData, // This includes both ciphertext and auth tag
     );
 
     const plaintext = new TextDecoder().decode(decryptedBuffer);
@@ -216,7 +215,7 @@ export async function decryptSecretsArray({
     const decryptedSecrets: Array<{
       key: string;
       value?: string | undefined;
-      note?: string | undefined;
+      note?: string | undefined | null;
     }> = [];
 
     for (const encrypted of encryptedSecrets) {

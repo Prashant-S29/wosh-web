@@ -36,7 +36,7 @@ import { Button } from '@/components/ui/button';
 interface SecretAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAuth: (credentials: ProjectKeyCredentials) => Promise<void>;
+  onAuth: ({ credentials }: { credentials: ProjectKeyCredentials }) => Promise<void>;
   requiresPin: boolean;
   isLoading?: boolean;
   title?: string;
@@ -82,8 +82,10 @@ export const SecretAuthModal: React.FC<SecretAuthModalProps> = ({
   const handleSubmit = async (data: AuthFormData) => {
     try {
       await onAuth({
-        masterPassphrase: data.masterPassphrase,
-        pin: data.pin,
+        credentials: {
+          masterPassphrase: data.masterPassphrase,
+          pin: data.pin,
+        },
       });
 
       // Clear form on success

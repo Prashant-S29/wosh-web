@@ -1,6 +1,6 @@
 export type CreateSecretRequestBase = {
   keyName: string;
-  note?: string;
+  note?: string | null;
   ciphertext?: string;
   nonce?: string;
   metadata?: Record<string, unknown>;

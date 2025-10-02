@@ -1,31 +1,17 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-
-// rhf and zod
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-// helpers
-import { secureStorage } from '@/lib/crypto/org';
 import { encryptSecretsArray } from '@/lib/crypto/secret/crypto-utils.secret';
-
-// hooks
-import { ProjectKeyCredentials, useProjectKey } from '@/hooks/useProjectKey';
+import { useMKDFConfig } from '@/hooks/useMKDFConfig';
+import { useSecretAuthentication } from '@/hooks/useSecretAuthentication';
 import { useTypedMutation } from '@/hooks';
-
-// types
 import { CreateSecretRequest } from '@/types/api/request';
 import { CreateSecretResponse } from '@/types/api/response';
-
-// icons
 import { Plus, X, FileText, Pencil, AlertTriangle, AlertCircle } from 'lucide-react';
-
-// schema
 import { SecretsFormSchema, SecretsFormValues } from '@/schema/secret';
-
-// components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
@@ -46,71 +32,37 @@ interface AddNewSecretsProps {
   projectId: string;
   userId: string;
 }
+
 export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
   organizationId,
   projectId,
   userId,
 }) => {
-  // helper
   const queryClient = useQueryClient();
-
-  // states
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set());
   const [duplicateKeyIndexes, setDuplicateKeyIndexes] = useState<number[]>([]);
   const [showNotes, setShowNotes] = useState<Set<number>>(new Set());
 
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [mkdfConfig, setMkdfConfig] = useState<{
-    requiresPin: boolean;
-    requiredFactors: number;
-    enabledFactors: string[];
-  } | null>(null);
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [pendingSecrets, setPendingSecrets] = useState<SecretsFormValues | null>(null);
-
-  const { isRecovering, recoverProjectKey, clearProjectKey } = useProjectKey(
-    projectId,
+  // Use MKDF config hook
+  const { mkdfConfig, isLoadingConfig } = useMKDFConfig({
     organizationId,
     userId,
-  );
+    enabled: !!userId,
+  });
 
-  // mutations
+  // Use authentication hook
+  const { showAuthModal, isAuthenticating, openAuthModal, closeAuthModal, handleAuthentication } =
+    useSecretAuthentication<SecretsFormValues>({
+      projectId,
+      organizationId,
+      userId,
+    });
+
   const createSecretMutation = useTypedMutation<CreateSecretRequest, CreateSecretResponse>({
     endpoint: `/api/secret/bulk?projectId=${projectId}`,
     method: 'POST',
   });
-
-  useEffect(() => {
-    const loadMkdfConfig = async () => {
-      try {
-        setIsLoadingConfig(true);
-
-        if (!userId) return;
-
-        const orgKeysResult = await secureStorage.getOrgKeysMKDF(organizationId, userId);
-
-        if (orgKeysResult.data) {
-          setMkdfConfig({
-            requiresPin: orgKeysResult.data.mkdfConfig.enabledFactors.includes('pin'),
-            requiredFactors: orgKeysResult.data.mkdfConfig.requiredFactors,
-            enabledFactors: orgKeysResult.data.mkdfConfig.enabledFactors,
-          });
-        } else {
-          // Fallback: try to load from server (implement this API call)
-          toast.warning('Security configuration not found locally');
-        }
-      } catch (error) {
-        console.error('Error loading MKDF configuration:', error);
-        toast.error('Failed to load security configuration');
-      } finally {
-        setIsLoadingConfig(false);
-      }
-    };
-
-    if (userId) {
-      loadMkdfConfig();
-    }
-  }, [organizationId, userId]);
 
   const form = useForm<SecretsFormValues>({
     resolver: zodResolver(SecretsFormSchema),
@@ -145,30 +97,36 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
     );
   };
 
-  // Function to parse .env content
   const parseEnvContent = (content: string): ParsedEnvEntry[] => {
     const lines = content.split('\n');
     const parsed: ParsedEnvEntry[] = [];
     let currentEntry: Partial<ParsedEnvEntry> | null = null;
+    let currentNote = '';
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
 
-      // Skip empty lines and comments
-      if (!line || line.startsWith('#')) {
+      // Handle comments as notes
+      if (line.startsWith('#')) {
+        currentNote = line.substring(1).trim();
         continue;
       }
 
-      // Check if line contains an assignment
+      // Skip empty lines
+      if (!line) {
+        currentNote = '';
+        continue;
+      }
+
       const assignmentMatch = line.match(/^([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);
 
       if (assignmentMatch) {
-        // If we have a pending entry, save it first
+        // Save previous entry if exists
         if (currentEntry && currentEntry.key) {
           parsed.push({
             key: currentEntry.key,
             value: currentEntry.value || '',
-            note: '',
+            note: currentEntry.note || '',
           });
         }
 
@@ -182,8 +140,8 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
         ) {
           value = value.slice(1, -1);
         } else if (value.startsWith('"') && !value.endsWith('"')) {
-          // Multi-line quoted value - collect until closing quote
-          let multiLineValue = value.substring(1); // Remove opening quote
+          // Handle multi-line quoted values
+          let multiLineValue = value.substring(1);
           let j = i + 1;
 
           while (j < lines.length) {
@@ -191,8 +149,8 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
             multiLineValue += '\n' + nextLine;
 
             if (nextLine.trim().endsWith('"')) {
-              multiLineValue = multiLineValue.slice(0, -1); // Remove closing quote
-              i = j; // Skip the processed lines
+              multiLineValue = multiLineValue.slice(0, -1);
+              i = j;
               break;
             }
             j++;
@@ -203,31 +161,73 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
         currentEntry = {
           key,
           value,
-          note: '',
+          note: currentNote,
         };
+        currentNote = '';
       } else if (currentEntry) {
-        // This might be a continuation of a multi-line value
         currentEntry.value = (currentEntry.value || '') + '\n' + line;
       }
     }
 
-    // Don't forget the last entry
+    // Add last entry
     if (currentEntry && currentEntry.key) {
       parsed.push({
         key: currentEntry.key,
         value: currentEntry.value || '',
-        note: '',
+        note: currentEntry.note || '',
       });
     }
 
     return parsed;
   };
 
-  // Function to detect and parse .env content from clipboard
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check if file name matches .env pattern
+    const validEnvPattern = /^\.env(\.[a-zA-Z0-9_-]+)?$/;
+    if (!validEnvPattern.test(file.name)) {
+      toast.error(
+        'Invalid file name. Please select a .env file (e.g., .env, .env.local, .env.production)',
+      );
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      const parsedEntries = parseEnvContent(content);
+
+      if (parsedEntries.length === 0) {
+        toast.error('No valid environment variables found in the file');
+        return;
+      }
+
+      replace(parsedEntries);
+      setVisibleSecrets(new Set());
+      setShowNotes(
+        new Set(
+          parsedEntries
+            .map((entry, index) => (entry.note ? index : null))
+            .filter((index): index is number => index !== null),
+        ),
+      );
+
+      toast.success(
+        `Imported ${parsedEntries.length} secret${parsedEntries.length > 1 ? 's' : ''} from ${file.name}`,
+      );
+    } catch (error) {
+      console.error('Error reading file:', error);
+      toast.error("Failed to read the file. Please ensure it's a valid text file.");
+    } finally {
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
   const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
     const pastedContent = event.clipboardData.getData('text/plain');
-
-    // Check if the pasted content looks like env content (multiple lines with KEY=VALUE pattern)
     const envLinePattern = /^[A-Z_][A-Z0-9_]*\s*=/m;
     const hasMultipleLines = pastedContent.includes('\n');
     const looksLikeEnv = hasMultipleLines && envLinePattern.test(pastedContent);
@@ -239,10 +239,7 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
         const parsedEntries = parseEnvContent(pastedContent);
 
         if (parsedEntries.length > 0) {
-          // Replace all current fields with parsed entries
           replace(parsedEntries);
-
-          // Reset visibility states
           setVisibleSecrets(new Set());
           setShowNotes(
             new Set(
@@ -251,13 +248,13 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
                 .filter((index): index is number => index !== null),
             ),
           );
-
-          // Show success message or toast here if needed
-          console.log(`Imported ${parsedEntries.length} environment variables`);
+          toast.success(
+            `Pasted ${parsedEntries.length} secret${parsedEntries.length > 1 ? 's' : ''}`,
+          );
         }
       } catch (error) {
         console.error('Error parsing environment variables:', error);
-        // Handle error - maybe show a toast notification
+        toast.error('Failed to parse environment variables');
       }
     }
   };
@@ -269,6 +266,7 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
   const removeSecret = (index: number) => {
     if (fields.length === 1) return;
     remove(index);
+
     setVisibleSecrets((prev) => {
       const newSet = new Set(prev);
       newSet.delete(index);
@@ -279,7 +277,7 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
       );
       return adjustedSet;
     });
-    // Clean up notes visibility state
+
     setShowNotes((prev) => {
       const newSet = new Set(prev);
       newSet.delete(index);
@@ -304,99 +302,34 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
     });
   };
 
-  // const onSubmit = (values: SecretsFormValues) => {
-  //   console.log('Form submitted:', values);
-  // };
-
   const onSubmit = async (values: SecretsFormValues) => {
-    try {
-      console.log('Form submitted:', values);
-
-      // // Validate input
-      // if (!validateSecrets(values.secrets)) {
-      //   return;
-      // }
-
-      // Store pending secrets and show auth modal
-      setPendingSecrets(values);
-      setShowAuthModal(true);
-    } catch (error) {
-      console.error('Error in form submission:', error);
-      toast.error('An error occurred while processing secrets');
-    }
+    openAuthModal(values);
   };
 
-  const handleAuthentication = async (credentials: ProjectKeyCredentials) => {
-    let projectKey: Uint8Array | null = null;
+  const onAuthentication = async (projectKey: Uint8Array, secrets: SecretsFormValues) => {
+    const encryptionResult = await encryptSecretsArray(secrets.secrets, projectKey);
 
-    try {
-      if (!pendingSecrets) {
-        toast.error('No secrets to encrypt');
-        return;
-      }
-
-      // Recover project key
-      const keyResult = await recoverProjectKey(credentials);
-
-      console.log('keyResult', keyResult);
-
-      if (keyResult.error || !keyResult.data) {
-        toast.error(keyResult.message);
-        return;
-      }
-
-      projectKey = keyResult.data;
-
-      // Encrypt all secrets
-      const encryptionResult = await encryptSecretsArray(pendingSecrets.secrets, projectKey);
-
-      if (encryptionResult.error || !encryptionResult.data) {
-        toast.error(encryptionResult.message);
-        return;
-      }
-
-      console.log('Secrets encrypted successfully:', encryptionResult.data);
-
-      console.log('formattedSecrets:', encryptionResult.data);
-
-      const createSecretResponse = await createSecretMutation.mutateAsync({
-        secrets: encryptionResult.data,
-      });
-
-      if (!createSecretResponse.data || createSecretResponse.error) {
-        toast.error(createSecretResponse.message);
-        return;
-      }
-
-      queryClient.invalidateQueries({ queryKey: ['secret', projectId] });
-
-      toast.success(
-        `Successfully encrypted and stored ${Array.isArray(createSecretResponse.data) ? createSecretResponse.data.length : 1} secrets`,
-      );
-      // Close modal and clear pending secrets
-      setShowAuthModal(false);
-      setPendingSecrets(null);
-      form.reset();
-    } catch (error) {
-      console.error('Authentication/encryption failed:', error);
-      toast.error('Failed to encrypt secrets');
-    } finally {
-      // Clear credentials from memory
-      if (credentials.masterPassphrase) {
-        credentials.masterPassphrase = '';
-      }
-      if (credentials.pin) {
-        credentials.pin = '';
-      }
-
-      // Clear project key from memory
-      clearProjectKey();
+    if (encryptionResult.error || !encryptionResult.data) {
+      toast.error(encryptionResult.message);
+      return;
     }
-  };
 
-  const handleAuthModalClose = () => {
-    setShowAuthModal(false);
-    setPendingSecrets(null);
+    const createSecretResponse = await createSecretMutation.mutateAsync({
+      secrets: encryptionResult.data,
+    });
+
+    if (!createSecretResponse.data || createSecretResponse.error) {
+      toast.error(createSecretResponse.message);
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['secret', projectId] });
+
+    toast.success(
+      `Successfully encrypted and stored ${Array.isArray(createSecretResponse.data) ? createSecretResponse.data.length : 1} secrets`,
+    );
+
+    form.reset();
   };
 
   if (isLoadingConfig) {
@@ -443,7 +376,6 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
                                     }}
                                   />
 
-                                  {/* Duplicate key warning */}
                                   {duplicateKeyIndexes.includes(index) && (
                                     <div className="absolute top-1/2 right-2 -translate-y-1/2">
                                       <Tooltip>
@@ -462,7 +394,6 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
                         />
                       </div>
 
-                      {/* Value Field */}
                       <div className="w-full">
                         <FormField
                           control={form.control}
@@ -552,8 +483,20 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
                 <Plus className="mr-2 h-4 w-4" />
                 Add Another
               </Button>
-              <Button type="button" variant="outline" size="sm">
-                <FileText className="h-4 w-4" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".env,.env.*"
+                onChange={handleFileImport}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileText className="mr-2 h-4 w-4" />
                 Import .env
               </Button>
               <span className="text-muted-foreground text-sm">
@@ -572,7 +515,9 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={form.formState.isSubmitting || !form.formState.isValid || isRecovering}
+                  disabled={
+                    form.formState.isSubmitting || !form.formState.isValid || isAuthenticating
+                  }
                 >
                   {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -583,10 +528,10 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
 
         <SecretAuthModal
           isOpen={showAuthModal}
-          onClose={handleAuthModalClose}
-          onAuth={handleAuthentication}
+          onClose={closeAuthModal}
+          onAuth={(credentials) => handleAuthentication(credentials.credentials, onAuthentication)}
           requiresPin={mkdfConfig?.requiresPin ?? false}
-          isLoading={isRecovering}
+          isLoading={isAuthenticating}
           title="Encrypt Secrets"
           description="Enter your credentials to encrypt and save secrets securely."
         />
