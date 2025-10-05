@@ -26,3 +26,7 @@ export type GetAllSecretsResponse = {
     hasPrev: boolean;
   };
 };
+
+export type UpdateSecretResponse = { id: string };
+
+export type DeleteSecretResponse = { deleted: boolean; id: string };
