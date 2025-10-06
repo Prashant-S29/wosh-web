@@ -26,3 +26,7 @@ export type CreateOrganizationRequest = {
     pinSalt?: string;
   };
 };
+
+export type UpdateOrganizationRequest = {
+  name: string;
+};

@@ -1,17 +1,29 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+
+// zod and rhf
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { encryptSecretsArray } from '@/lib/crypto/secret/crypto-utils.secret';
+
+// hooks
+import { useQueryClient } from '@tanstack/react-query';
 import { useMKDFConfig } from '@/hooks/useMKDFConfig';
 import { useSecretAuthentication } from '@/hooks/useSecretAuthentication';
 import { useTypedMutation } from '@/hooks';
+
+// utils
+import { encryptSecretsArray } from '@/lib/crypto/secret/crypto-utils.secret';
+
+// types ans schema
 import { CreateSecretRequest } from '@/types/api/request';
 import { CreateSecretResponse } from '@/types/api/response';
-import { Plus, X, FileText, Pencil, AlertTriangle, AlertCircle } from 'lucide-react';
 import { SecretsFormSchema, SecretsFormValues } from '@/schema/secret';
+
+// icons
+import { Plus, X, FileText, Pencil, AlertTriangle, AlertCircle } from 'lucide-react';
+
+// components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
@@ -20,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { SecretAuthModal } from '@/components/common';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ParsedEnvEntry {
   key: string;
@@ -334,11 +347,15 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
 
   if (isLoadingConfig) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-          <p className="text-sm text-gray-600">Loading security configuration...</p>
+      <div className="flex w-full max-w-5xl flex-col gap-4 rounded-lg border p-5">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-5 w-[100px]" />
+          <Skeleton className="h-5 w-[100px]" />
+          <Skeleton className="h-5 w-[100px]" />
         </div>
+
+        <Skeleton className="h-5 w-[80%]" />
+        <Skeleton className="h-5 w-[80%]" />
       </div>
     );
   }
@@ -510,11 +527,12 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
               </span>
 
               <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={() => form.reset()}>
+                <Button type="button" variant="outline" size="sm" onClick={() => form.reset()}>
                   Clear All
                 </Button>
                 <Button
                   type="submit"
+                  size="sm"
                   disabled={
                     form.formState.isSubmitting || !form.formState.isValid || isAuthenticating
                   }

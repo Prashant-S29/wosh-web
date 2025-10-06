@@ -19,7 +19,7 @@ const Dashboard: React.FC = () => {
       {isLoading ? (
         <PageLoader />
       ) : (
-        <Container className="mx-auto flex min-h-screen flex-col gap-5">
+        <Container>
           <h1 className="text-2xl font-semibold">Your Organizations</h1>
           <AvailableOrganizations />
         </Container>

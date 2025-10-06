@@ -1,12 +1,13 @@
 import React from 'react';
 
 import { CreateOrganizationForm } from '@/components/form/organization';
+import { Container } from '@/components/common';
 
 const NewOrganization: React.FC = () => {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
+    <Container className="items-center">
       <CreateOrganizationForm />
-    </div>
+    </Container>
   );
 };
 

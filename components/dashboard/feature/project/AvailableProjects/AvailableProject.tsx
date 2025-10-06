@@ -73,7 +73,7 @@ export const AvailableProjects: React.FC<AvailableProjectsProps> = ({ organizati
               <EmptyDescription>Create your first Project to get started.</EmptyDescription>
               <EmptyContent className="mt-4">
                 <Button size="sm" asChild>
-                  <Link href={`/dashboard/organization/${organizationId}/project/new`}>
+                  <Link href={`/dashboard/organization/${organizationId}/projects/new`}>
                     <Plus />
                     New Project
                   </Link>
@@ -95,7 +95,7 @@ export const AvailableProjects: React.FC<AvailableProjectsProps> = ({ organizati
                 </div>
 
                 <Button size="sm" asChild>
-                  <Link href={`/dashboard/organization/${organizationId}/project/new`}>
+                  <Link href={`/dashboard/organization/${organizationId}/projects/new`}>
                     <Plus />
                     New Project
                   </Link>
