@@ -92,6 +92,7 @@ const Settings: React.FC = () => {
     if (orgName.trim()) {
       if (orgName.trim().length < 2 || orgName.trim().length > 200) {
         toast.error('Organization name must be between 2 and 200 characters');
+        return;
       }
       const res = await updateOrganizationMutation.mutateAsync({ name: orgName.trim() });
 
