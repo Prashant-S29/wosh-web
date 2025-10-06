@@ -12,6 +12,8 @@ import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 // components
 import { Button } from '@/components/ui/button';
 import { HeaderUserProfile } from '@/components/feature';
+import Image from 'next/image';
+import { Logo } from '@/public';
 
 export const Header: React.FC = () => {
   const { isLoading, token } = useCheckAuthClient({
@@ -19,11 +21,12 @@ export const Header: React.FC = () => {
   });
 
   return (
-    <header className="fixed w-full">
-      <div className="container mx-auto flex items-center justify-between py-8">
+    <header className="fixed z-50 w-full border border-b">
+      <div className="container mx-auto flex items-center justify-between py-4">
         <div>
-          <Link href="/" className="text-2xl font-semibold">
-            Wosh.
+          <Link href="/" className="flex items-center gap-2 text-xl font-semibold">
+            <Image src={Logo} width={24} height={24} alt="Logo" />
+            Wosh
           </Link>
         </div>
         <div className="flex items-center">
@@ -45,9 +48,9 @@ export const Header: React.FC = () => {
               <HeaderUserProfile token={token} />
             </div>
           ) : (
-            <div className="flex items-center gap-5">
-              <Button variant="secondary" asChild size="sm" disabled={isLoading} className="h-9">
-                <Link href="/login">Login</Link>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" asChild size="sm" disabled={isLoading}>
+                <Link href="/login">Sing in</Link>
               </Button>
               <Button variant="default" asChild size="sm" disabled={isLoading}>
                 <Link href="/dashboard">Start your project</Link>

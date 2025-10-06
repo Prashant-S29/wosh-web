@@ -520,105 +520,117 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
           </CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => handleExport('env')}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport('env')}
+            disabled={allSecrets?.data?.allSecrets.length === 0}
+          >
             <Download className="mr-2 h-4 w-4" />
             Export .env
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => handleExport('csv')}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport('csv')}
+            disabled={allSecrets?.data?.allSecrets.length === 0}
+          >
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative max-w-sm flex-1">
-              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
-              <Input
-                placeholder="Search secrets..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="pr-9 pl-9"
-              />
-              {searchQuery && (
+        {allSecrets?.data?.allSecrets && allSecrets.data.allSecrets.length > 0 ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="relative max-w-sm flex-1">
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
+                <Input
+                  placeholder="Search secrets..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="pr-9 pl-9"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearSearch}
+                    className="absolute top-1/2 right-2 h-auto -translate-y-1/2 transform p-1 hover:bg-transparent"
+                  >
+                    <X className="text-muted-foreground h-4 w-4" />
+                  </Button>
+                )}
+                {(isLoading || isRefetching) && (
+                  <div className="absolute top-1/2 right-2 -translate-y-1/2 transform">
+                    <div className="border-primary h-4 w-4 animate-spin rounded-full border-1 border-r-transparent" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">Show:</span>
+                  <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="all">All Rows</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="outline" size="icon" onClick={() => refetchSecrets()}>
+                  <RefreshCcw />
+                </Button>
+              </div>
+            </div>
+
+            {debouncedSearchQuery && (
+              <div className="bg-muted flex items-center gap-2 rounded-lg p-3">
+                <Search className="text-muted-foreground h-4 w-4" />
+                <span className="text-sm">
+                  Searching for: <strong>{debouncedSearchQuery}</strong>
+                </span>
+                {pagination && (
+                  <span className="text-muted-foreground text-sm">
+                    ({pagination.total} result{pagination.total !== 1 ? 's' : ''} found)
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={clearSearch}
-                  className="absolute top-1/2 right-2 h-auto -translate-y-1/2 transform p-1 hover:bg-transparent"
+                  className="ml-auto h-auto p-1"
                 >
-                  <X className="text-muted-foreground h-4 w-4" />
+                  <X className="h-4 w-4" />
                 </Button>
-              )}
-              {(isLoading || isRefetching) && (
-                <div className="absolute top-1/2 right-2 -translate-y-1/2 transform">
-                  <div className="border-primary h-4 w-4 animate-spin rounded-full border-1 border-r-transparent" />
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">Show:</span>
-                <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="all">All Rows</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-              <Button variant="outline" size="icon" onClick={() => refetchSecrets()}>
-                <RefreshCcw />
-              </Button>
-            </div>
-          </div>
+            )}
 
-          {debouncedSearchQuery && (
-            <div className="bg-muted flex items-center gap-2 rounded-lg p-3">
-              <Search className="text-muted-foreground h-4 w-4" />
-              <span className="text-sm">
-                Searching for: <strong>{debouncedSearchQuery}</strong>
-              </span>
-              {pagination && (
-                <span className="text-muted-foreground text-sm">
-                  ({pagination.total} result{pagination.total !== 1 ? 's' : ''} found)
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearSearch}
-                className="ml-auto h-auto p-1"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
+            <div className="overflow-x-auto rounded-lg border">
+              <div className="border-b px-5 py-3 text-sm font-medium">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <div key={headerGroup.id} className="grid min-w-fit grid-cols-3 gap-5">
+                    {headerGroup.headers.map((header) => (
+                      <p key={header.id} className="font-semibold">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+              </div>
 
-          <div className="overflow-x-auto rounded-lg border">
-            <div className="border-b px-5 py-3 text-sm font-medium">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <div key={headerGroup.id} className="grid min-w-fit grid-cols-3 gap-5">
-                  {headerGroup.headers.map((header) => (
-                    <p key={header.id} className="font-semibold">
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            <div>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
+              <div>
+                {table.getRowModel().rows.map((row) => (
                   <div key={row.id} className="border-b last-of-type:border-none">
                     <div className="group grid min-w-fit grid-cols-3 items-center gap-5 px-5 py-3 text-sm transition-colors">
                       {row
@@ -693,7 +705,12 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
                             <Button
                               size="sm"
                               onClick={handleSaveEdit}
-                              disabled={isAuthenticating || updateMutation.isPending}
+                              disabled={
+                                isAuthenticating ||
+                                updateMutation.isPending ||
+                                editFormData.value.length < 1 ||
+                                editFormData.key.length < 1
+                              }
                             >
                               {isAuthenticating || updateMutation.isPending ? (
                                 <>
@@ -712,77 +729,77 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
                       </div>
                     )}
                   </div>
-                ))
-              ) : (
-                <div className="h-24 px-5 py-3 text-center">
-                  <p className="text-muted-foreground">
-                    {debouncedSearchQuery
-                      ? `No secrets match "${debouncedSearchQuery}".`
-                      : 'No secrets found.'}
-                  </p>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {pagination && pagination.pages > 1 && (
-            <div className="flex items-center justify-between">
-              <div className="text-muted-foreground text-sm">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                {pagination.total} results
+            {pagination && pagination.pages > 1 && (
+              <div className="flex items-center justify-between">
+                <div className="text-muted-foreground text-sm">
+                  Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
+                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
+                  {pagination.total} results
+                  {debouncedSearchQuery && <span className="ml-1">for {debouncedSearchQuery}</span>}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(1)}
+                    disabled={!pagination.hasPrev}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={!pagination.hasPrev}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  <span className="px-3 text-sm font-medium">
+                    Page {pagination.page} of {pagination.pages}
+                  </span>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={!pagination.hasNext}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(pagination.pages)}
+                    disabled={!pagination.hasNext}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {pagination && pagination.pages <= 1 && pagination.total > 0 && (
+              <div className="text-muted-foreground text-center text-sm">
+                Showing all {pagination.total} result{pagination.total !== 1 ? 's' : ''}
                 {debouncedSearchQuery && <span className="ml-1">for {debouncedSearchQuery}</span>}
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(1)}
-                  disabled={!pagination.hasPrev}
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={!pagination.hasPrev}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-
-                <span className="px-3 text-sm font-medium">
-                  Page {pagination.page} of {pagination.pages}
-                </span>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={!pagination.hasNext}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.pages)}
-                  disabled={!pagination.hasNext}
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {pagination && pagination.pages <= 1 && pagination.total > 0 && (
-            <div className="text-muted-foreground text-center text-sm">
-              Showing all {pagination.total} result{pagination.total !== 1 ? 's' : ''}
-              {debouncedSearchQuery && <span className="ml-1">for {debouncedSearchQuery}</span>}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex h-24 items-center justify-center px-5 py-3 text-center">
+            <p className="text-muted-foreground">
+              {debouncedSearchQuery
+                ? `No secrets match "${debouncedSearchQuery}".`
+                : 'No secrets found.'}
+            </p>
+          </div>
+        )}
 
         <SecretAuthModal
           isOpen={showAuthModal}

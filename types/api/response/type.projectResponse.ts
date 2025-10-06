@@ -2,11 +2,14 @@ export type CreateProjectResponse = {
   id: string;
 };
 
+export type Project = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
 export type GetAllAvailableProjectsResponse = {
-  allProjects: {
-    id: string;
-    name: string;
-  }[];
+  allProjects: Project[];
   pagination: {
     total: number;
     page: number;

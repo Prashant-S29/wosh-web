@@ -2,11 +2,15 @@ export type CreateOrganizationResponse = {
   id: string;
 };
 
+export type Organization = {
+  id: string;
+  name: string;
+  createdAt: string;
+  totalProjects: number;
+};
+
 export type GetAllAvailableOrganizationsResponse = {
-  allOrgs: {
-    id: string;
-    name: string;
-  }[];
+  allOrgs: Organization[];
   pagination: {
     total: number;
     page: number;
