@@ -363,7 +363,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
                           type={showPassphrase ? 'text' : 'password'}
                           placeholder="Strong passphrase"
                           disabled={form.formState.isSubmitting}
-                          maxLength={8}
                           {...field}
                         />
                         <Button
