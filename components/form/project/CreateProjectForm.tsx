@@ -1,17 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CreateProjectSchema, type CreateProjectSchemaType } from '@/schema/project';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+// zod and rhf
 import z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+
+// schema and types
+import { CreateProjectSchema, type CreateProjectSchemaType } from '@/schema/project';
 import { GetSessionResponse, CreateProjectResponse } from '@/types/api/response';
 import { CreateProjectRequest } from '@/types/api/request';
+import { ProjectsMKDFConfig } from '@/types/encryptions';
+import { ProjectKeyCredentials } from '@/hooks/useProjectKey';
+
+// hooks
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTypedMutation, useTypedQuery } from '@/hooks';
 import { useMKDFConfig } from '@/hooks/useMKDFConfig';
-import { Eye, EyeOff, Shield, Loader2, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
+
+// icons
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+
+// components
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -24,7 +39,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+// utils
 import { secureStorage } from '@/lib/crypto/org/secure-storage.org';
 import { retrieveOrgPrivateKeyMKDF, secureWipe } from '@/lib/crypto/org/crypto-utils.org';
 import {
@@ -33,11 +49,8 @@ import {
   deriveProjectStorageKey,
   projectSecureStorage,
 } from '@/lib/crypto/project';
-import { ProjectsMKDFConfig } from '@/types/encryptions';
-import { ProjectKeyCredentials } from '@/hooks/useProjectKey';
 
 interface CreateProjectFormProps {
-  setOpen?: (open: boolean) => void;
   organizationId: string;
 }
 
@@ -65,12 +78,11 @@ const createProjectFormSchema = (mkdfConfig: ProjectsMKDFConfig | null) => {
   });
 };
 
-export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
-  setOpen,
-  organizationId,
-}) => {
+export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ organizationId }) => {
   const { token } = useCheckAuthClient();
   const queryClient = useQueryClient();
+  const router = useRouter();
+
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [showPin, setShowPin] = useState(false);
 
@@ -230,7 +242,7 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
         secureWipe(projectSymmetricKey);
       }
       form.reset();
-      setOpen?.(false);
+      router.push(`/dashboard/organization/${organizationId}`);
     }
   };
 
@@ -246,160 +258,153 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Security Status */}
-      {mkdfConfig && (
-        <Card className="gap-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Shield className="h-4 w-4" />
-              Security Configuration
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 pt-0">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm">
-                {mkdfConfig.requiredFactors > 1 ? 'Multi-Factor Security' : 'Standard Security'}(
-                {mkdfConfig.requiredFactors} factor{mkdfConfig.requiredFactors !== 1 ? 's' : ''})
-              </span>
-            </div>
-
-            {mkdfConfig.enabledFactors.includes('device') && (
-              <div className="flex items-center gap-2">
-                {deviceVerified ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : (
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                )}
-                <span className="text-sm">
-                  Device Verification: {deviceVerified ? 'Ready' : 'Low Confidence'}
-                </span>
-              </div>
-            )}
-
-            <div className="text-muted-foreground text-xs">
-              Required:{' '}
-              {mkdfConfig.enabledFactors.join(', ').replace('passphrase', 'master passphrase')}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+    <div className="bg-accent/50 flex w-[700px] flex-col rounded-lg border">
+      <div className="flex items-center justify-between border-b px-5 py-4">
+        <p className="text-sm font-medium">Create a New Project</p>
+        <Badge variant={deviceVerified ? 'outline' : 'destructive'}>
+          Device Verification: {deviceVerified ? 'Ready' : 'Low Confidence'}
+        </Badge>
+      </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Project Name</FormLabel>
-                <FormControl>
-                  <Input
-                    type="text"
-                    placeholder="e.g., Backend Secrets v1"
-                    disabled={form.formState.isSubmitting}
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>A descriptive name for your project</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="masterPassphrase"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Master Passphrase</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showPassphrase ? 'text' : 'password'}
-                      placeholder="Enter your organization master passphrase"
-                      disabled={form.formState.isSubmitting}
-                      {...field}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute top-0 right-0 h-full px-3"
-                      onClick={() => setShowPassphrase(!showPassphrase)}
-                      disabled={form.formState.isSubmitting}
-                    >
-                      {showPassphrase ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </FormControl>
-                <FormDescription>The master passphrase for this organization</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {mkdfConfig?.requiresPin && (
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="flex flex-col gap-5 border-b p-5">
             <FormField
               control={form.control}
-              name="pin"
+              name="name"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Security PIN</FormLabel>
-                  <FormControl>
-                    <div className="relative">
+                <FormItem className="grid grid-cols-3 items-start">
+                  <FormLabel className="mt-1.5">Project Name</FormLabel>
+                  <FormControl className="col-span-2">
+                    <section className="flex flex-col gap-2">
                       <Input
-                        type={showPin ? 'text' : 'password'}
-                        placeholder="Enter your organization PIN"
+                        type="text"
+                        placeholder="e.g., Backend Secrets v1"
                         disabled={form.formState.isSubmitting}
-                        maxLength={8}
                         {...field}
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-0 right-0 h-full px-3"
-                        onClick={() => setShowPin(!showPin)}
-                        disabled={form.formState.isSubmitting}
-                      >
-                        <Lock className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      <FormDescription className="font-medium">
+                        A descriptive name for your project
+                      </FormDescription>
+                      <FormMessage />
+                    </section>
                   </FormControl>
-                  <FormDescription>
-                    The additional PIN required for this organization
-                  </FormDescription>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="masterPassphrase"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-3 items-start">
+                  <FormLabel className="mt-1.5">Master Passphrase</FormLabel>
+                  <FormControl className="col-span-2">
+                    <section className="flex flex-col gap-2">
+                      <div className="relative">
+                        <Input
+                          type={showPassphrase ? 'text' : 'password'}
+                          placeholder="Enter your organization master passphrase"
+                          disabled={form.formState.isSubmitting}
+                          {...field}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          tabIndex={-1}
+                          className="absolute top-0 right-0 h-full px-3"
+                          onClick={() => setShowPassphrase(!showPassphrase)}
+                          disabled={form.formState.isSubmitting}
+                        >
+                          {showPassphrase ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <FormDescription className="font-medium">
+                        The master passphrase for this organization
+                      </FormDescription>
+                      <FormMessage />
+                    </section>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={
-              form.formState.isSubmitting ||
-              !form.watch('name') ||
-              !form.watch('masterPassphrase') ||
-              (mkdfConfig?.requiresPin && !form.watch('pin'))
-            }
-          >
-            {form.formState.isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Project...
-              </>
-            ) : (
-              `Create ${form.watch('name') || 'Project'}`
+            {mkdfConfig?.requiresPin && (
+              <FormField
+                control={form.control}
+                name="pin"
+                render={({ field }) => (
+                  <FormItem className="grid grid-cols-3 items-start">
+                    <FormLabel className="mt-1.5">Security PIN</FormLabel>
+                    <FormControl className="col-span-2">
+                      <div className="flex flex-col gap-2">
+                        <div className="relative">
+                          <Input
+                            type={showPin ? 'text' : 'password'}
+                            placeholder="Enter 4-8 digit PIN"
+                            disabled={form.formState.isSubmitting}
+                            maxLength={8}
+                            {...field}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            tabIndex={-1}
+                            className="absolute top-1/2 right-0 h-full -translate-y-1/2 px-3"
+                            onClick={() => setShowPin(!showPin)}
+                          >
+                            {showPin ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        <FormDescription className="font-medium">
+                          The additional PIN required for this organization
+                        </FormDescription>
+                        <FormMessage />
+                      </div>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             )}
-          </Button>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 p-5">
+            <Button
+              size="sm"
+              type="button"
+              variant="secondary"
+              asChild
+              disabled={form.formState.isSubmitting}
+            >
+              <Link href={`/dashboard/organization/${organizationId}`}>Cancel</Link>
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={
+                form.formState.isSubmitting ||
+                !form.watch('name') ||
+                !form.watch('masterPassphrase') ||
+                (mkdfConfig?.requiresPin && !form.watch('pin'))
+              }
+            >
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Project...
+                </>
+              ) : (
+                `Create ${form.watch('name') || 'Project'}`
+              )}
+            </Button>
+          </div>
         </form>
       </Form>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 
 // utils
@@ -9,15 +9,29 @@ import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 // components
 import { AddNewSecrets, AvailableSecrets } from '@/components/dashboard/feature';
 import { PageLoader, ResourceHandler } from '@/components/common';
+import { useActiveOrg, useActiveProject } from '@/hooks';
 
 const Project: React.FC = () => {
   const params = useParams();
-  const id = [params.orgId, params.projectId] as string[];
+  const id = useMemo(
+    () => [params.orgId, params.projectId] as string[],
+    [params.orgId, params.projectId],
+  );
+
+  const { setActiveProjectId } = useActiveProject();
+  const { setActiveOrgId } = useActiveOrg();
 
   const { session, isLoading } = useCheckAuthClient({
     redirectTo: '/login',
     redirect: true,
   });
+
+  useEffect(() => {
+    if (id) {
+      setActiveOrgId(id[0]);
+      setActiveProjectId(id[1]);
+    }
+  }, [id, setActiveOrgId, setActiveProjectId]);
 
   if (isLoading) return <PageLoader />;
   if (!session?.session.userId) return <ResourceHandler type="unauthorized" />;

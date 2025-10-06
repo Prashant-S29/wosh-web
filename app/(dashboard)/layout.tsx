@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import '@/style/globals.css';
 
 // fonts
-import { geistSans, geistMono } from '@/public/fonts';
+import { geistSans } from '@/public/fonts';
 import { Provider } from '@/components/common/Provider';
+import { Header } from '@/components/dashboard/layout';
 
 export const metadata: Metadata = {
   title: 'Create Next App',
@@ -17,8 +18,11 @@ export default function DashboardLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Provider>{children}</Provider>
+      <body className={`${geistSans.className} antialiased`}>
+        <Provider>
+          <Header />
+          {children}
+        </Provider>
       </body>
     </html>
   );

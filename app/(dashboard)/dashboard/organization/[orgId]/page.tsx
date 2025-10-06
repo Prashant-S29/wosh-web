@@ -1,42 +1,45 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 
 // utils
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 
 // hooks
-import { useTypedQuery } from '@/hooks';
-
-// types
-import { GetOrganizationResponse } from '@/types/api/response';
+import { useActiveOrg } from '@/hooks';
 
 // components
 import { AvailableProjects } from '@/components/dashboard/feature/project';
+import { Container, PageLoader, ResourceHandler } from '@/components/common';
 
 const Organization: React.FC = () => {
   const params = useParams();
+
+  const { setActiveOrgId } = useActiveOrg();
+
   const id = params.orgId as string;
 
-  useCheckAuthClient({
+  const { isLoading, session } = useCheckAuthClient({
     redirectTo: '/login',
     redirect: true,
   });
 
-  // get org info
-  const { data: orgData } = useTypedQuery<GetOrganizationResponse>({
-    endpoint: `/api/organization/${id}`,
-    queryKey: ['organization', id],
-    enabled: !!id,
-  });
+  // Set active org
+  useEffect(() => {
+    if (id) {
+      setActiveOrgId(id);
+    }
+  }, [id, setActiveOrgId]);
+
+  if (isLoading) return <PageLoader />;
+  if (!session?.session.userId) return <ResourceHandler type="unauthorized" />;
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-5">
-      <h1 className="text-2xl font-semibold">{orgData?.data?.name} dashboard</h1>
-
-      {id && <AvailableProjects organizationId={id} />}
-    </main>
+    <Container className="mx-auto flex min-h-screen flex-col gap-5">
+      <h1 className="text-2xl font-semibold">Projects</h1>
+      <AvailableProjects organizationId={id} />
+    </Container>
   );
 };
 

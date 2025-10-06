@@ -6,10 +6,10 @@ import React from 'react';
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 
 import { AvailableOrganizations } from '@/components/dashboard/feature';
-import { PageLoader } from '@/components/common';
+import { Container, PageLoader } from '@/components/common';
 
 const Dashboard: React.FC = () => {
-  const { isLoading, session } = useCheckAuthClient({
+  const { isLoading } = useCheckAuthClient({
     redirectTo: '/login',
     redirect: true,
   });
@@ -19,13 +19,10 @@ const Dashboard: React.FC = () => {
       {isLoading ? (
         <PageLoader />
       ) : (
-        <main className="flex min-h-screen flex-col items-center justify-center gap-5">
-          <h1 className="text-2xl font-semibold">
-            Hey {session?.user?.name}! Welcome to your dashboard.
-          </h1>
-
+        <Container className="mx-auto flex min-h-screen flex-col gap-5">
+          <h1 className="text-2xl font-semibold">Your Organizations</h1>
           <AvailableOrganizations />
-        </main>
+        </Container>
       )}
     </>
   );

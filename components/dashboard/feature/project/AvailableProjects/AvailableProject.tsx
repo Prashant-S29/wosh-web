@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 
 // utils and hooks
@@ -10,22 +10,20 @@ import { useTypedQuery } from '@/hooks';
 // types
 import { GetAllAvailableProjectsResponse } from '@/types/api/response';
 
-// icons
-import { ChevronRightIcon } from 'lucide-react';
-
 // components
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FormDialogOpener } from '@/components/common';
 import { Button } from '@/components/ui/button';
-import { CreateProjectForm } from '@/components/form/project/CreateProjectForm';
+import { FolderOpen, Plus, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ProjectsCard } from '../ProjectsCard';
 
 interface AvailableProjectsProps {
   organizationId: string;
@@ -33,6 +31,7 @@ interface AvailableProjectsProps {
 
 export const AvailableProjects: React.FC<AvailableProjectsProps> = ({ organizationId }) => {
   const { token } = useCheckAuthClient();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: projectData, isLoading: isProjectLoading } =
     useTypedQuery<GetAllAvailableProjectsResponse>({
@@ -41,63 +40,91 @@ export const AvailableProjects: React.FC<AvailableProjectsProps> = ({ organizati
       enabled: !!token && !!organizationId,
     });
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Continue with</CardTitle>
-        <CardDescription>Available Projects</CardDescription>
-      </CardHeader>
-      <CardContent className="w-[400px]">
-        {isProjectLoading ? (
-          <div className="flex flex-col">
-            {Array.from({ length: 2 }).map((_, index) => (
-              <div
-                key={index}
-                className="hover:bg-accent/20 flex cursor-pointer items-center justify-between border-b px-3 py-4 last-of-type:border-none"
-              >
-                <Skeleton className="h-8 w-[200px]" />
-                <ChevronRightIcon size={16} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            {projectData?.data?.allProjects.length === 0 ? (
-              <div className="bg-accent/50 flex h-[100px] flex-col items-center justify-center rounded-sm">
-                <p className="text-muted-foreground text-sm">No projects found</p>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                {projectData?.data?.allProjects.map((data, index) => (
-                  <Button
-                    key={index}
-                    asChild
-                    variant="ghost"
-                    size="lg"
-                    className="w-full justify-between"
-                  >
-                    <Link href={`/dashboard/organization/${organizationId}/project/${data.id}`}>
-                      <p className="text-sm">{data.name}</p>
-                      <ChevronRightIcon size={16} />
-                    </Link>
-                  </Button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
+  const filteredProjects = useMemo(() => {
+    if (!projectData?.data?.allProjects) return [];
 
-      <CardFooter>
-        <FormDialogOpener
-          trigger={<Button className="w-full">Create Project</Button>}
-          title="Create Project"
-          description="Create a new project"
-          className="w-full max-w-[800px]"
-        >
-          <CreateProjectForm organizationId={organizationId} />
-        </FormDialogOpener>
-      </CardFooter>
-    </Card>
+    if (!searchQuery.trim()) {
+      return projectData.data.allProjects;
+    }
+
+    return projectData.data.allProjects.filter((project) =>
+      project.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [projectData?.data?.allProjects, searchQuery]);
+
+  return (
+    <div>
+      {isProjectLoading ? (
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-[100px] w-full" />
+          ))}
+        </div>
+      ) : (
+        <>
+          {projectData?.data?.allProjects.length === 0 ? (
+            <Empty className="bg-accent/50 gap-1 border border-dashed">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FolderOpen />
+                </EmptyMedia>
+              </EmptyHeader>
+              <EmptyTitle>No Projects found</EmptyTitle>
+              <EmptyDescription>Create your first Project to get started.</EmptyDescription>
+              <EmptyContent className="mt-4">
+                <Button size="sm" asChild>
+                  <Link href={`/dashboard/organization/${organizationId}/project/new`}>
+                    <Plus />
+                    New Project
+                  </Link>
+                </Button>
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <div className="flex flex-col gap-5">
+              <div className="flex w-full items-center justify-between gap-3">
+                <div className="relative max-w-sm flex-1">
+                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                  <Input
+                    type="text"
+                    placeholder="Search projects..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <Button size="sm" asChild>
+                  <Link href={`/dashboard/organization/${organizationId}/project/new`}>
+                    <Plus />
+                    New Project
+                  </Link>
+                </Button>
+              </div>
+
+              {filteredProjects.length === 0 ? (
+                <Empty className="bg-accent/50 gap-1 border border-dashed">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Search />
+                    </EmptyMedia>
+                  </EmptyHeader>
+                  <EmptyTitle>No projects found</EmptyTitle>
+                  <EmptyDescription>
+                    No projects match your search criteria. Try a different search term.
+                  </EmptyDescription>
+                </Empty>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  {filteredProjects.map((data) => (
+                    <ProjectsCard data={data} key={data.id} organizationId={organizationId} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 };

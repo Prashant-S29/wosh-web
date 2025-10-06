@@ -37,11 +37,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Shield, Copy, AlertTriangle, Smartphone } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Eye, EyeOff, Copy } from 'lucide-react';
 import { CreateOrganizationRequest } from '@/types/api/request';
 import { DeviceInfo } from '@/types/encryptions';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 interface CreateOrganizationFormProps {
   setOpen?: (open: boolean) => void;
@@ -58,9 +58,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
   // states
   const [showPassphrase, setShowPassphrase] = useState(false);
-  const [showConfirmPassphrase, setShowConfirmPassphrase] = useState(false);
   const [showPin, setShowPin] = useState(false);
-  const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>('');
   const [deviceConfidence, setDeviceConfidence] = useState<'high' | 'medium' | 'low'>('low');
   const [isGeneratingFingerprint, setIsGeneratingFingerprint] = useState(true);
@@ -85,9 +83,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     defaultValues: {
       organizationName: '',
       masterPassphrase: '',
-      confirmPassphrase: '',
       pin: '',
-      confirmPin: '',
       enablePinProtection: false,
       signedUndertaking: false,
     },
@@ -221,9 +217,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
       // Clear sensitive data from memory
       data.masterPassphrase = '';
-      data.confirmPassphrase = '';
       data.pin = '';
-      data.confirmPin = '';
 
       toast.success(
         `Organization "${data.organizationName}" created successfully with MKDF security`,
@@ -281,7 +275,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     const passphrase = randomWords.join('-') + '-' + Math.floor(Math.random() * 1000);
 
     form.setValue('masterPassphrase', passphrase);
-    form.setValue('confirmPassphrase', passphrase);
 
     // Copy to clipboard
     const { success } = await copyToClipboard(passphrase);
@@ -324,339 +317,214 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
   };
 
   return (
-    <div className="flex gap-5">
-      <Card className="relative">
-        <CardHeader>
-          <CardTitle className="flex w-full items-center justify-between">
-            Create a New Organization
-          </CardTitle>
-          <CardDescription>Create a new organization to manage your data securely.</CardDescription>
-        </CardHeader>
-        <CardContent className="w-[700px]">
-          <div className="absolute top-0 -left-[420px] flex w-[400px] flex-col gap-5">
-            <Alert>
-              <Shield className="h-4 w-4" />
-              <AlertDescription className="flex">
-                <p>
-                  This organization will use <strong>Multi-Factor Key Derivation (MKDF)</strong> for
-                  enhanced security. Your keys are protected by multiple factors and never stored on
-                  our servers.
-                </p>
-              </AlertDescription>
-            </Alert>
+    <div className="bg-accent/50 flex w-[700px] flex-col rounded-lg border">
+      <div className="flex items-center justify-between border-b px-5 py-4">
+        <p className="text-sm font-medium">Create a New Organization</p>
+        <Badge variant="outline">Device Confidence - {deviceConfidence.toUpperCase()}</Badge>
+      </div>
 
-            {/* Device Status Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex w-full items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <Smartphone className="h-4 w-4" />
-                    Device Security Status
-                  </div>
-                  {isGeneratingFingerprint ? 'loading..' : `(${deviceConfidence} confidence)`}
-                </CardTitle>
-              </CardHeader>
-            </Card>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="flex flex-col gap-5 border-b p-5">
+            <FormField
+              control={form.control}
+              name="organizationName"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-3 items-start">
+                  <FormLabel className="mt-1.5">Organization Name</FormLabel>
+                  <FormControl className="col-span-2">
+                    <section className="flex flex-col gap-2">
+                      <Input
+                        type="text"
+                        placeholder="e.g., Acme Corp"
+                        disabled={form.formState.isSubmitting}
+                        {...field}
+                      />
+                      <FormDescription className="font-medium">
+                        What&apos;s the name of your company or team?
+                      </FormDescription>
+                      <FormMessage />
+                    </section>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-            {form.watch('signedUndertaking') && (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Attention Needed</AlertTitle>
-                <AlertDescription>
-                  Copy your security credentials before proceeding. This includes your passphrase
-                  and PIN (if enabled). Loss of these credentials means permanent loss of access to
-                  your organization data.
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="mt-3 w-full"
-                    onClick={copyCredentials}
-                  >
-                    <Copy className="mr-1 h-4 w-4" />
-                    Copy Security Credentials
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/*  */}
-            <div className="flex flex-col gap-2"></div>
-          </div>
-          <div className="">
-            <div className="grid grid-cols-2 gap-5">{/* Security Notice */}</div>
-
-            {/* Download Warning - shown after passphrase is generated */}
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Organization Name */}
-                <FormField
-                  control={form.control}
-                  name="organizationName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization Name</FormLabel>
-                      <FormControl>
+            <FormField
+              control={form.control}
+              name="masterPassphrase"
+              render={({ field }) => (
+                <FormItem className="grid grid-cols-3 items-start">
+                  <FormLabel className="mt-1.5">Master Passphrase</FormLabel>
+                  <FormControl className="col-span-2">
+                    <section className="flex flex-col gap-2">
+                      <div className="relative">
                         <Input
-                          type="text"
-                          placeholder="e.g., Acme Corp"
+                          type={showPassphrase ? 'text' : 'password'}
+                          placeholder="Strong passphrase"
                           disabled={form.formState.isSubmitting}
+                          maxLength={8}
                           {...field}
                         />
-                      </FormControl>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1/2 right-0 h-full -translate-y-1/2 px-3"
+                          onClick={() => setShowPassphrase(!showPassphrase)}
+                        >
+                          {showPassphrase ? (
+                            <Eye className="h-4 w-4" />
+                          ) : (
+                            <EyeOff className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <FormDescription className="font-medium">
+                        This key will be used to encrypt and decrypt all the secrets in your
+                        organization.{' '}
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={generateSecurePassphrase}
+                          disabled={form.formState.isSubmitting}
+                          className="text-primary text-xs font-semibold underline underline-offset-2"
+                        >
+                          Generate
+                        </button>
+                      </FormDescription>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    </section>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-                {/* Master Passphrase */}
-                <div className="grid grid-cols-2 items-start gap-5">
-                  <FormField
-                    control={form.control}
-                    name="masterPassphrase"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center justify-between">
-                          <p>Master Passphrase</p>
-                          {/* Master Passphrase */}
-                          <button
+            {form.watch('enablePinProtection') && (
+              <FormField
+                control={form.control}
+                name="pin"
+                render={({ field }) => (
+                  <FormItem className="grid grid-cols-3 items-start">
+                    <FormLabel className="mt-1.5">Security PIN</FormLabel>
+                    <FormControl className="col-span-2">
+                      <div className="flex flex-col gap-2">
+                        <div className="relative">
+                          <Input
+                            type={showPin ? 'text' : 'password'}
+                            placeholder="Enter 4-8 digit PIN"
+                            disabled={form.formState.isSubmitting}
+                            maxLength={8}
+                            {...field}
+                          />
+                          <Button
                             type="button"
-                            tabIndex={-1}
-                            onClick={generateSecurePassphrase}
-                            disabled={form.formState.isSubmitting}
-                            className="text-accent-foreground text-xs underline"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-1/2 right-0 h-full -translate-y-1/2 px-3"
+                            onClick={() => setShowPin(!showPin)}
                           >
-                            Generate
-                          </button>
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showPassphrase ? 'text' : 'password'}
-                              placeholder="Strong passphrase"
-                              disabled={form.formState.isSubmitting}
-                              {...field}
-                            />
-                            <div className="absolute top-0 right-0 flex h-full">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-full px-3"
-                                onClick={() => setShowPassphrase(!showPassphrase)}
-                              >
-                                {showPassphrase ? (
-                                  <Eye className="h-4 w-4" />
-                                ) : (
-                                  <EyeOff className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        </FormControl>
+                            {showPin ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                        <FormDescription className="font-medium">
+                          This PIN will be required along with your passphrase to access the
+                          organization.
+                        </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Confirm Passphrase */}
-                  <FormField
-                    control={form.control}
-                    name="confirmPassphrase"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Passphrase</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showConfirmPassphrase ? 'text' : 'password'}
-                              placeholder="Re-enter your passphrase"
-                              disabled={form.formState.isSubmitting}
-                              {...field}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="absolute top-0 right-0 h-full px-3"
-                              onClick={() => setShowConfirmPassphrase(!showConfirmPassphrase)}
-                            >
-                              {showConfirmPassphrase ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* PIN Fields - only show if PIN protection is enabled */}
-                {form.watch('enablePinProtection') && (
-                  <div className="grid grid-cols-2 items-start gap-x-5 gap-y-2">
-                    <FormField
-                      control={form.control}
-                      name="pin"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Security PIN</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showPin ? 'text' : 'password'}
-                                placeholder="Enter 4-8 digit PIN"
-                                disabled={form.formState.isSubmitting}
-                                maxLength={8}
-                                {...field}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute top-0 right-0 h-full px-3"
-                                onClick={() => setShowPin(!showPin)}
-                              >
-                                {showPin ? (
-                                  <Eye className="h-4 w-4" />
-                                ) : (
-                                  <EyeOff className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="confirmPin"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm PIN</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showConfirmPin ? 'text' : 'password'}
-                                placeholder="Re-enter your PIN"
-                                disabled={form.formState.isSubmitting}
-                                maxLength={8}
-                                {...field}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute top-0 right-0 h-full px-3"
-                                onClick={() => setShowConfirmPin(!showConfirmPin)}
-                              >
-                                {showConfirmPin ? (
-                                  <Eye className="h-4 w-4" />
-                                ) : (
-                                  <EyeOff className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <p className="text-muted-foreground col-span-2 px-1 text-sm">
-                      This PIN will be required along with your passphrase to access the
-                      organization.
-                    </p>
-                  </div>
+                      </div>
+                    </FormControl>
+                  </FormItem>
                 )}
+              />
+            )}
 
-                {/* Security Options */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium">Security Configuration</h3>
+            <FormField
+              control={form.control}
+              name="enablePinProtection"
+              render={({ field }) => (
+                <FormItem className="col-span-2 flex flex-row items-start space-y-0 space-x-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={form.formState.isSubmitting}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>PIN Protection</FormLabel>
+                    <FormDescription>
+                      Add an additional PIN for extra security. You&apos;ll need to enter this PIN
+                      each time you access the organization.
+                    </FormDescription>
+                    <FormMessage />
+                  </div>
+                </FormItem>
+              )}
+            />
 
-                  <FormField
-                    control={form.control}
-                    name="enablePinProtection"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={form.formState.isSubmitting}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>PIN Protection (Optional)</FormLabel>
-                          <FormDescription>
-                            Add an additional PIN for extra security. You&apos;ll need to enter this
-                            PIN each time you access the organization.
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Undertaking */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium">Undertaking</h3>
-
-                  <FormField
-                    control={form.control}
-                    name="signedUndertaking"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-y-0 space-x-3">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={form.formState.isSubmitting}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Important Security Notice</FormLabel>
-                          <FormDescription>
-                            I confirm that in case of losing all the credentials, I might get
-                            completely locked out of this organization. These credentials cannot be
-                            recovered and will result in permanent loss of access to organization
-                            data.
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={
-                      form.formState.isSubmitting ||
-                      isGeneratingFingerprint ||
-                      !form.watch('signedUndertaking')
-                    }
-                  >
-                    {form.formState.isSubmitting
-                      ? `Creating ${form.watch('organizationName')}...`
-                      : `Create ${form.watch('organizationName') || 'Organization'} with MKDF Security`}
-                  </Button>
-
-                  <p className="text-muted-foreground text-center text-xs">
-                    By creating this organization, you acknowledge that lost credentials cannot be
-                    recovered and will result in permanent data loss.
-                  </p>
-                </div>
-              </form>
-            </Form>
+            <FormField
+              control={form.control}
+              name="signedUndertaking"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-y-0 space-x-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      disabled={form.formState.isSubmitting}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Important Security Notice</FormLabel>
+                    <FormDescription>
+                      I confirm that in case of losing all the credentials, I might get completely
+                      locked out of this organization. These credentials cannot be recovered and
+                      will result in permanent loss of access to organization data.
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="flex items-center justify-between gap-3 p-5">
+            <div>
+              {form.watch('signedUndertaking') && (
+                <Button type="button" size="sm" variant="outline" onClick={copyCredentials}>
+                  <Copy className="" />
+                  Copy Security Credentials
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                type="button"
+                variant="secondary"
+                asChild
+                disabled={
+                  form.formState.isSubmitting ||
+                  isGeneratingFingerprint ||
+                  !form.watch('signedUndertaking')
+                }
+              >
+                <Link href="/dashboard">Cancel</Link>
+              </Button>
+              <Button
+                size="sm"
+                disabled={
+                  form.formState.isSubmitting ||
+                  isGeneratingFingerprint ||
+                  !form.watch('signedUndertaking')
+                }
+              >
+                Create Organization
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 };
