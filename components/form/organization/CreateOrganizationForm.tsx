@@ -225,7 +225,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       setOpen?.(false);
 
       // Redirect to organization dashboard
-      router.push(`/dashboard/organization/${response.data.id}`);
+      router.push(`/dashboard/organization/${response.data.id}/projects`);
     } catch (error) {
       console.error('Error creating organization:', error);
 
@@ -470,7 +470,10 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
                   <FormControl>
                     <Checkbox
                       checked={field.value}
-                      onCheckedChange={field.onChange}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (checked) copyCredentials();
+                      }}
                       disabled={form.formState.isSubmitting}
                     />
                   </FormControl>

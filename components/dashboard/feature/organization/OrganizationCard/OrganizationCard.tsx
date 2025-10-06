@@ -14,7 +14,7 @@ interface OrganizationCardProps {
 export const OrganizationCard: React.FC<OrganizationCardProps> = ({ data }) => {
   return (
     <div>
-      <Link href={`/dashboard/organization/${data.id}`}>
+      <Link href={`/dashboard/organization/${data.id}/projects`}>
         <div className="bg-accent/50 hover:bg-accent/40 relative z-10 flex cursor-pointer flex-col gap-5 rounded-xl border p-5 duration-300">
           <div className="flex items-center gap-2">
             <div className="bg-primary text-primary-foreground flex aspect-square h-7 items-center justify-center rounded-sm px-2 text-xs font-medium uppercase">

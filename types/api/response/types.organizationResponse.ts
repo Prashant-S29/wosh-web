@@ -24,8 +24,13 @@ export type GetAllAvailableOrganizationsResponse = {
 export type GetOrganizationResponse = {
   id: string;
   name: string;
-  ownerId: string;
   publicKey: string;
+  requiredFactors: number;
+  factorConfig: {
+    requiredFactors: number;
+    enabledFactors: ('passphrase' | 'device' | 'pin')[];
+  };
+  recoveryThreshold: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -35,13 +40,11 @@ export type RecoverOrgKeysResponse = {
   encryptionIv: string;
   publicKey: string;
   mkdfVersion: number;
-
   requiredFactors: number;
   factorConfig: {
     requiredFactors: number;
     enabledFactors: ('passphrase' | 'device' | 'pin')[];
   };
-
   deviceInfo: {
     id: string;
     deviceName: string;
@@ -55,4 +58,11 @@ export type RecoverOrgKeysResponse = {
   };
 };
 
-// export type RecoverOrgKeysResponse = StoredOrgKeysMKDF;
+export type UpdateOrganizationResponse = {
+  id: string;
+};
+
+export type DeleteOrganizationResponse = {
+  deleted: boolean;
+  id: string;
+};

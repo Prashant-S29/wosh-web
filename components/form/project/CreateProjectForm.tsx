@@ -242,7 +242,7 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ organizati
         secureWipe(projectSymmetricKey);
       }
       form.reset();
-      router.push(`/dashboard/organization/${organizationId}`);
+      router.push(`/dashboard/organization/${organizationId}/projects`);
     }
   };
 
@@ -383,7 +383,7 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ organizati
               asChild
               disabled={form.formState.isSubmitting}
             >
-              <Link href={`/dashboard/organization/${organizationId}`}>Cancel</Link>
+              <Link href={`/dashboard/organization/${organizationId}/projects`}>Cancel</Link>
             </Button>
             <Button
               type="submit"

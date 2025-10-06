@@ -36,9 +36,20 @@ const Organization: React.FC = () => {
   if (!session?.session.userId) return <ResourceHandler type="unauthorized" />;
 
   return (
-    <Container className="mx-auto flex min-h-screen flex-col gap-5">
+    <Container>
       <h1 className="text-2xl font-semibold">Projects</h1>
       <AvailableProjects organizationId={id} />
+
+      {/* <div className="bg-border my-5 h-[1px] w-full" /> */}
+      {/* 
+      <h1 className="text-2xl font-semibold">Settings</h1>
+      <Alert variant="default">
+        <IoWarning />
+        <AlertTitle>Delete Project</AlertTitle>
+        <AlertDescription>
+          You can add components and dependencies to your app using the cli.
+        </AlertDescription>
+      </Alert> */}
     </Container>
   );
 };

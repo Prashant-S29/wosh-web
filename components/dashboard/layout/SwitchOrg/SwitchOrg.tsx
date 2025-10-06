@@ -59,7 +59,7 @@ export const SwitchOrg: React.FC<SwitchOrgProps> = ({ activeOrgId }) => {
       return;
     }
 
-    router.push(`/dashboard/organization/${orgId}`);
+    router.push(`/dashboard/organization/${orgId}/projects`);
     setOpen(false);
   };
 
@@ -76,7 +76,7 @@ export const SwitchOrg: React.FC<SwitchOrgProps> = ({ activeOrgId }) => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div className="flex items-center gap-2 text-sm">
-        <Link href={`/dashboard/organization/${activeOrgId}`}>{activeOrg?.name}</Link>
+        <Link href={`/dashboard/organization/${activeOrgId}/projects`}>{activeOrg?.name}</Link>
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
@@ -90,7 +90,7 @@ export const SwitchOrg: React.FC<SwitchOrgProps> = ({ activeOrgId }) => {
           </Button>
         </PopoverTrigger>
       </div>
-      <PopoverContent className="w-[250px] p-0">
+      <PopoverContent align="start" className="w-[250px] p-0">
         <Command>
           <CommandInput placeholder="Search organization..." />
           <CommandList>
