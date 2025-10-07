@@ -1,21 +1,28 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 // utils
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
 
 // components
 import { HeaderUserProfile } from '@/components/feature';
-import Image from 'next/image';
+
+// assets
 import { Logo } from '@/public';
-import { usePathname } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+
+// hooks
 import { useActiveOrg, useActiveProject } from '@/hooks';
+
+// components
+import { Button } from '@/components/ui/button';
 import { SwitchOrg } from '../SwitchOrg';
 import { SwitchProject } from '../SwitchProject';
-import { data } from './data';
+import { ProjectHeader } from '../ProjectHeader';
+import { OrgHeader } from '../OrgHeader';
 
 // const data =
 
@@ -66,26 +73,17 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {pathName.includes('/organization') &&
+      {activeOrgId &&
+        pathName.includes('/organization') &&
         !pathName.includes('new') &&
-        !pathName.includes('/projects/') && (
-          <div className="flex px-8 pt-2">
-            {data.map((item, index) => (
-              <Button
-                key={index}
-                asChild
-                variant="ghost"
-                className={`relative ${pathName.includes(item.href) ? 'text-primary' : 'text-muted-foreground'}`}
-              >
-                <Link href={`/dashboard/organization/${activeOrgId}/${item.href}`}>
-                  {pathName.includes(item.href) && (
-                    <div className="bg-primary absolute bottom-0 left-0 h-[1px] w-full" />
-                  )}
-                  {item.label}
-                </Link>
-              </Button>
-            ))}
-          </div>
+        !pathName.includes('/projects/') && <OrgHeader orgId={activeOrgId} pathName={pathName} />}
+
+      {activeOrgId &&
+        activeProjectId &&
+        pathName.includes('/organization') &&
+        !pathName.includes('new') &&
+        pathName.includes('/projects/') && (
+          <ProjectHeader orgId={activeOrgId} projectId={activeProjectId} pathName={pathName} />
         )}
     </header>
   );

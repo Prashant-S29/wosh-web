@@ -10,18 +10,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { useMKDFConfig } from '@/hooks/useMKDFConfig';
 import { useSecretAuthentication } from '@/hooks/useSecretAuthentication';
-import { useTypedMutation } from '@/hooks';
+import { useTypedMutation, useTypedQuery } from '@/hooks';
 
 // utils
 import { encryptSecretsArray } from '@/lib/crypto/secret/crypto-utils.secret';
 
 // types ans schema
 import { CreateSecretRequest } from '@/types/api/request';
-import { CreateSecretResponse } from '@/types/api/response';
+import { CreateSecretResponse, GetAllSecretsResponse } from '@/types/api/response';
 import { SecretsFormSchema, SecretsFormValues } from '@/schema/secret';
 
 // icons
-import { Plus, X, FileText, Pencil, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Plus, X, FileText, Pencil, AlertTriangle, AlertCircle, XCircle } from 'lucide-react';
 
 // components
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set());
   const [duplicateKeyIndexes, setDuplicateKeyIndexes] = useState<number[]>([]);
+  const [existingKeyIndexes, setExistingKeyIndexes] = useState<number[]>([]);
   const [showNotes, setShowNotes] = useState<Set<number>>(new Set());
 
   // Use MKDF config hook
@@ -71,6 +72,13 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
       organizationId,
       userId,
     });
+
+  // get all secrets
+  const { data: allSecrets } = useTypedQuery<GetAllSecretsResponse>({
+    endpoint: `/api/secret?projectId=${projectId}`,
+    queryKey: ['secret', projectId],
+    enabled: !!projectId,
+  });
 
   const createSecretMutation = useTypedMutation<CreateSecretRequest, CreateSecretResponse>({
     endpoint: `/api/secret/bulk?projectId=${projectId}`,
@@ -92,7 +100,18 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
 
   const handleDuplicateKey = () => {
     const seen = new Map<string, number[]>();
+    const existingKeys = new Set<string>();
 
+    // Get existing secret keys from the API response
+    const secrets = allSecrets?.data?.allSecrets || [];
+
+    secrets.forEach((secret) => {
+      if (secret.keyName) {
+        existingKeys.add(secret.keyName.trim());
+      }
+    });
+
+    // Check for duplicates within the form
     form.watch('secrets').forEach((secret, idx) => {
       const key = secret.key.trim();
       if (key) {
@@ -103,11 +122,22 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
       }
     });
 
+    // Set duplicate indexes (within form)
     setDuplicateKeyIndexes(
       Array.from(seen.values())
         .filter((arr) => arr.length > 1)
         .flat(),
     );
+
+    // Set indexes that conflict with existing keys
+    const conflictingIndexes: number[] = [];
+    form.watch('secrets').forEach((secret, idx) => {
+      const key = secret.key.trim();
+      if (key && existingKeys.has(key)) {
+        conflictingIndexes.push(idx);
+      }
+    });
+    setExistingKeyIndexes(conflictingIndexes);
   };
 
   const parseEnvContent = (content: string): ParsedEnvEntry[] => {
@@ -227,6 +257,8 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
         ),
       );
 
+      setTimeout(() => handleDuplicateKey(), 0);
+
       toast.success(
         `Imported ${parsedEntries.length} secret${parsedEntries.length > 1 ? 's' : ''} from ${file.name}`,
       );
@@ -261,6 +293,9 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
                 .filter((index): index is number => index !== null),
             ),
           );
+
+          setTimeout(() => handleDuplicateKey(), 0);
+
           toast.success(
             `Pasted ${parsedEntries.length} secret${parsedEntries.length > 1 ? 's' : ''}`,
           );
@@ -393,13 +428,22 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
                                     }}
                                   />
 
-                                  {duplicateKeyIndexes.includes(index) && (
+                                  {(duplicateKeyIndexes.includes(index) ||
+                                    existingKeyIndexes.includes(index)) && (
                                     <div className="absolute top-1/2 right-2 -translate-y-1/2">
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <AlertCircle className="h-4 w-4 text-red-500" />
+                                          {existingKeyIndexes.includes(index) ? (
+                                            <XCircle className="text-destructive h-4 w-4" />
+                                          ) : (
+                                            <AlertCircle className="text-destructive h-4 w-4" />
+                                          )}
                                         </TooltipTrigger>
-                                        <TooltipContent>Duplicate Key</TooltipContent>
+                                        <TooltipContent>
+                                          {existingKeyIndexes.includes(index)
+                                            ? 'Key already exists in project'
+                                            : 'Duplicate key in form'}
+                                        </TooltipContent>
                                       </Tooltip>
                                     </div>
                                   )}
@@ -527,14 +571,29 @@ export const AddNewSecrets: React.FC<AddNewSecretsProps> = ({
               </span>
 
               <div className="flex gap-3">
-                <Button type="button" variant="outline" size="sm" onClick={() => form.reset()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    form.reset();
+                    setDuplicateKeyIndexes([]);
+                    setExistingKeyIndexes([]);
+                    setVisibleSecrets(new Set());
+                    setShowNotes(new Set());
+                  }}
+                >
                   Clear All
                 </Button>
                 <Button
                   type="submit"
                   size="sm"
                   disabled={
-                    form.formState.isSubmitting || !form.formState.isValid || isAuthenticating
+                    form.formState.isSubmitting ||
+                    !form.formState.isValid ||
+                    isAuthenticating ||
+                    duplicateKeyIndexes.length > 0 ||
+                    existingKeyIndexes.length > 0
                   }
                 >
                   {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
