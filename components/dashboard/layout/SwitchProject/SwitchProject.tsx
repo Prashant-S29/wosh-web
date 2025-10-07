@@ -58,7 +58,7 @@ export const SwitchProject: React.FC<SwitchProjectProps> = ({
       return;
     }
 
-    router.push(`/dashboard/organization/${organizationId}/projects/${projectId}`);
+    router.push(`/dashboard/organization/${organizationId}/projects/${projectId}/overview`);
     setOpen(false);
   };
 
@@ -75,7 +75,9 @@ export const SwitchProject: React.FC<SwitchProjectProps> = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div className="flex items-center gap-2 text-sm">
-        <Link href={`/dashboard/organization/${organizationId}/projects/${activeProjectId}`}>
+        <Link
+          href={`/dashboard/organization/${organizationId}/projects/${activeProjectId}/overview`}
+        >
           {activeProject?.name}
         </Link>
         <PopoverTrigger asChild>

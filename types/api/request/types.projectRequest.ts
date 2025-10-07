@@ -3,3 +3,7 @@ export type CreateProjectRequest = {
   organizationId: string;
   wrappedSymmetricKey: string;
 };
+
+export type UpdateProjectRequest = {
+  name: string;
+};

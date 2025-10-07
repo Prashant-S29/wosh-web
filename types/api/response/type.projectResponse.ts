@@ -23,3 +23,19 @@ export type GetAllAvailableProjectsResponse = {
 export type GetProjectKeysResponse = {
   wrappedSymmetricKey: string;
 };
+
+export type UpdateProjectResponse = {
+  id: string;
+};
+
+export type DeleteProjectResponse = {
+  deleted: boolean;
+  id: string;
+};
+
+export type GetProjectResponse = {
+  id: string;
+  name: string;
+  createdAt: string;
+  organizationId: string;
+};

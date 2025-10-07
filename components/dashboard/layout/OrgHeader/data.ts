@@ -1,4 +1,4 @@
-export const data = [
+export const orgHeaderData = [
   {
     label: 'Projects',
     href: 'projects',
