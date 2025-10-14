@@ -1,141 +1,203 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-
-import { saveToCookie } from '@/lib/utils.cookies';
 
 // schema
-import { LoginSchema, LoginSchemaType } from '@/schema';
+import { SignupSchema, SignupSchemaType } from '@/schema';
 
 // hooks
 import { useTypedMutation } from '@/hooks';
 
 // types
-import { LoginResponse } from '@/types/api/response';
-import { LoginRequest } from '@/types/api/request';
+import { SignUpVerificationOtpRequest, SignupRequest } from '@/types/api/request';
+import { SignUpVerificationOtpResponse, SignupResponse } from '@/types/api/response';
 
-//  rhf
+// rhf
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 // components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { ContinueWithGoogle } from '@/components/feature';
 import { toast } from 'sonner';
+import { saveToCookie } from '@/lib/utils.cookies';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Logo } from '@/public';
 
-export const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  requestOrigin?: string;
+}
+
+export const LoginForm: React.FC<LoginFormProps> = ({ requestOrigin }) => {
   const router = useRouter();
 
-  // mutation
-  const loginMutation = useTypedMutation<LoginRequest, LoginResponse>({
-    endpoint: '/api/auth/signin',
-    method: 'POST',
-    onSuccess: (data) => {
-      if (data.error || !data.data?.token) {
-        console.error(data.error);
-        toast.error(data.message);
-      } else {
-        toast.success(data.message);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [otp, setOtp] = useState('');
 
-        // save token to cookie
-        saveToCookie('token', data.data.token);
-        router.push('/dashboard');
-      }
-    },
+  // mutation
+  const signUpWithEmailOtpMutation = useTypedMutation<SignupRequest, SignupResponse>({
+    endpoint: '/api/auth/signup-with-email-otp',
   });
 
-  const form = useForm<LoginSchemaType>({
-    resolver: zodResolver(LoginSchema),
+  const reqSignUpOtpMutation = useTypedMutation<
+    SignUpVerificationOtpRequest,
+    SignUpVerificationOtpResponse
+  >({
+    endpoint: '/api/auth/req-signup-otp',
+  });
+
+  const form = useForm<SignupSchemaType>({
+    resolver: zodResolver(SignupSchema),
     defaultValues: {
       email: '',
-      password: '',
     },
   });
 
-  const onSubmit = async (data: LoginSchemaType) => {
-    console.log('Login form data:', data);
-    await loginMutation.mutateAsync(data);
+  const onEmailSubmit = async (data: SignupSchemaType) => {
+    const reqSignUpOtpResponse = await reqSignUpOtpMutation.mutateAsync({
+      email: data.email,
+    });
+
+    if (reqSignUpOtpResponse.error || !reqSignUpOtpResponse.data?.success) {
+      toast.error('Unable to send verification otp. Please try again later.');
+      return;
+    }
+
+    toast.success('Verification OTP sent successfully.');
+    setUserEmail(data.email);
+    setIsOtpSent(true);
+  };
+
+  const onOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (otp.length !== 6) {
+      toast.error('Please enter a valid 6-digit OTP');
+      return;
+    }
+
+    const signupResponse = await signUpWithEmailOtpMutation.mutateAsync({
+      email: userEmail,
+      otp,
+    });
+
+    if (signupResponse.error || !signupResponse.data?.token) {
+      toast.error(signupResponse.message);
+      setOtp('');
+      return;
+    }
+
+    toast.success('Success');
+
+    // set token to cookie
+    saveToCookie('token', signupResponse.data.token);
+
+    if (requestOrigin && requestOrigin === 'cli') {
+      router.push('/cli/login-success');
+      return;
+    }
+
+    router.push('/dashboard');
   };
 
   return (
     <div className="flex w-full max-w-[400px] flex-col gap-3">
-      <Button asChild variant="secondary" className="w-fit border">
-        <Link href="/">Home</Link>
-      </Button>
-
       <Card>
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Login to your account</CardDescription>
+        <CardHeader className="text-center">
+          <CardTitle className="flex flex-col items-center justify-center gap-4">
+            <Link href="/">
+              <Image src={Logo} alt="logo" width={30} height={30} />
+            </Link>
+            Welcome to Wosh {requestOrigin}
+          </CardTitle>
+          <CardDescription>
+            {isOtpSent ? (
+              <p>
+                Enter the verification code sent to <br />
+                <span className="text-primary font-medium">{form.watch('email')}</span>
+                <br />
+                {/* <span>Change email</span> */}
+              </p>
+            ) : (
+              'Create a new account or login into an existing one'
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="m@example.com"
-                        disabled={form.formState.isSubmitting}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {!isOtpSent ? (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onEmailSubmit)} className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="me@example.com"
+                          {...field}
+                          disabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Password</FormLabel>
-                      <Link href="#" className="text-sm underline-offset-4 hover:underline">
-                        Forgot your password?
-                      </Link>
-                    </div>
-                    <FormControl>
-                      <Input type="password" disabled={form.formState.isSubmitting} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex flex-col gap-3">
-                <Button type="submit" className="w-full" loading={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={form.formState.isSubmitting || reqSignUpOtpMutation.isPending}
+                >
+                  {form.formState.isSubmitting || reqSignUpOtpMutation.isPending
+                    ? 'Sending...'
+                    : 'Send Verification Code'}
                 </Button>
-                <ContinueWithGoogle />
+              </form>
+            </Form>
+          ) : (
+            <form onSubmit={onOtpSubmit} className="space-y-3">
+              <div className="space-y-2">
+                <Input
+                  type="text"
+                  placeholder="000000"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.slice(0, 6))}
+                  disabled={signUpWithEmailOtpMutation.isPending}
+                  maxLength={6}
+                  className="mt-1 text-center text-2xl tracking-widest"
+                />
               </div>
-            </form>
-          </Form>
 
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline underline-offset-4">
-              Sign up
-            </Link>
-          </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={signUpWithEmailOtpMutation.isPending || otp.length !== 6}
+              >
+                {signUpWithEmailOtpMutation.isPending ? 'Verifying...' : 'Verify'}
+              </Button>
+            </form>
+          )}
+
+          {isOtpSent && (
+            <div
+              className="flex justify-center"
+              onClick={() => {
+                setIsOtpSent(false);
+                setOtp('');
+              }}
+            >
+              <button className="text-muted-foreground mt-4 text-center text-sm">
+                Not yours? Change email
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
