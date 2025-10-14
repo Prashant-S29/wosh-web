@@ -27,3 +27,7 @@ export type GetSessionResponse = {
     id: string;
   };
 };
+
+export type SignUpVerificationOtpResponse = {
+  success: boolean;
+};

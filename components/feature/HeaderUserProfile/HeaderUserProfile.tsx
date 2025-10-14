@@ -68,7 +68,7 @@ export const HeaderUserProfile: React.FC<Props> = ({ token }) => {
             <AvatarFallback>
               {isLoading
                 ? 'W.'
-                : ((sessionData?.data?.user && sessionData?.data?.user.name) || 'W.')
+                : ((sessionData?.data?.user.name || sessionData?.data?.user.email) ?? '')
                     .charAt(0)
                     .toUpperCase()}
             </AvatarFallback>
@@ -80,10 +80,12 @@ export const HeaderUserProfile: React.FC<Props> = ({ token }) => {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="line-clamp-1 text-sm leading-none font-medium">
-              {(sessionData?.data?.user && sessionData?.data?.user.name) || 'na'}
+              {sessionData?.data?.user.name
+                ? sessionData?.data?.user.name
+                : (sessionData?.data?.user.email || '').split('@')[0]}
             </p>
             <p className="text-muted-foreground line-clamp-1 text-sm leading-none">
-              {(sessionData?.data?.user && sessionData?.data?.user.email) || 'na'}
+              {sessionData?.data?.user.email || 'na'}
             </p>
           </div>
         </DropdownMenuLabel>

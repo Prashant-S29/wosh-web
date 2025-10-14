@@ -1,10 +1,8 @@
-export type LoginRequest = {
+export type SignupRequest = {
   email: string;
-  password: string;
+  otp: string;
 };
 
-export type SignupRequest = {
-  name: string;
+export type SignUpVerificationOtpRequest = {
   email: string;
-  password: string;
 };
