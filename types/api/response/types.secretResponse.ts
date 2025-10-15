@@ -30,3 +30,9 @@ export type GetAllSecretsResponse = {
 export type UpdateSecretResponse = { id: string };
 
 export type DeleteSecretResponse = { deleted: boolean; id: string };
+
+export type ShareSecretResponse = { id: string };
+
+export type GetSecretSharingCodeResponse = {
+  secretSharingCode: string | null;
+};
