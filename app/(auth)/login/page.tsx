@@ -10,7 +10,6 @@ const Login: React.FC<LoginProps> = async ({ searchParams }) => {
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center">
-      {requestOrigin}
       <LoginForm requestOrigin={requestOrigin} />
     </div>
   );
