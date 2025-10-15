@@ -68,7 +68,7 @@ export const SwitchProject: React.FC<SwitchProjectProps> = ({
   };
 
   const handleAllProjects = () => {
-    router.push('/dashboard');
+    router.push(`/dashboard/organization/${organizationId}/projects`);
     setOpen(false);
   };
 
