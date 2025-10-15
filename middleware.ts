@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  if (isLoggedIn && (pathname === '/login' || pathname === '/signup')) {
+  if (isLoggedIn && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
@@ -26,5 +26,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/login', '/signup', '/dashboard/:path*', '/logout'],
+  matcher: ['/login', '/dashboard/:path*', '/logout'],
 };

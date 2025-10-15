@@ -1,10 +1,16 @@
 import React from 'react';
 import { LoginForm } from '@/components/form/auth';
 
-const Login: React.FC = () => {
+interface LoginProps {
+  searchParams: Promise<{ requestOrigin: string }>;
+}
+
+const Login: React.FC<LoginProps> = async ({ searchParams }) => {
+  const { requestOrigin } = await searchParams;
+
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center">
-      <LoginForm />
+      <LoginForm requestOrigin={requestOrigin} />
     </div>
   );
 };
