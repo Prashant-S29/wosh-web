@@ -9,3 +9,8 @@ export type CreateSecretRequestBase = {
 export type CreateSecretRequest = { secrets: CreateSecretRequestBase[] };
 
 export type UpdateSecretRequestBase = Partial<CreateSecretRequestBase>;
+
+export type ShareSecretRequest = {
+  secretSharingToken: string;
+  secretSharingCode: string;
+};
