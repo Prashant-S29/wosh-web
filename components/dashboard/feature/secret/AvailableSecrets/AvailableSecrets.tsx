@@ -72,6 +72,7 @@ import {
 import { SecretsDeleteDialog } from './SecretsDeleteDialog';
 import { ShareSecretDialog } from './ShareSecretDialog';
 import { useQueryClient } from '@tanstack/react-query';
+import { ProjectKeyCredentials } from '@/hooks/useProjectKey';
 
 const columnHelper = createColumnHelper<Secrets>();
 
@@ -286,6 +287,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
   const onAuthenticationSuccess = async (
     projectKey: Uint8Array,
     data: Secrets[] | EditFormData | Secrets | { organizationId: string; projectId: string },
+    credentials: ProjectKeyCredentials,
   ) => {
     try {
       if (operationType === 'export') {
@@ -295,7 +297,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
       } else if (operationType === 'copy') {
         await handleCopyOperation(data as Secrets, projectKey);
       } else if (operationType === 'share') {
-        await handleShareOperation();
+        await handleShareOperation(credentials);
       }
     } catch (error) {
       console.error('Authentication success handler error:', error);
@@ -383,10 +385,12 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
     toast.success('Secret copied to clipboard');
   };
 
-  const handleShareOperation = async () => {
+  const handleShareOperation = async (credentials: ProjectKeyCredentials) => {
     const generateShareTokenAndCodeRes = await generateShareTokenAndCode({
       orgId: organizationId,
       projectId: projectId,
+      masterPassphrase: credentials.masterPassphrase,
+      ...(credentials.pin ? { pin: credentials.pin } : {}),
     });
 
     if (
@@ -857,7 +861,9 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
           isOpen={showAuthModal}
           onClose={closeAuthModal}
           onAuth={(credentials) =>
-            handleAuthentication(credentials.credentials, onAuthenticationSuccess)
+            handleAuthentication(credentials.credentials, (projectKey, data) =>
+              onAuthenticationSuccess(projectKey, data, credentials.credentials),
+            )
           }
           requiresPin={mkdfConfig?.requiresPin ?? false}
           isLoading={isAuthenticating}
