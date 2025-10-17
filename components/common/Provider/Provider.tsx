@@ -57,7 +57,7 @@ export const Provider: React.FC<Props> = ({ children }) => {
         enableSystem={true}
         disableTransitionOnChange
       >
-        <Toaster visibleToasts={3} />
+        <Toaster visibleToasts={3} richColors />
         {children}
         {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
       </NextThemesProvider>
