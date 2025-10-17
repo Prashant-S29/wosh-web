@@ -574,7 +574,9 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
             type="button"
             size="sm"
             onClick={handleShare}
-            disabled={isAuthenticating || isLoadingSecretSharingCode || isSharingSecret}
+            disabled={
+              isAuthenticating || isLoadingSecretSharingCode || isSharingSecret || !hasSecrets
+            }
           >
             {isSharingSecret ? (
               <>
