@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 // Schema
@@ -125,14 +125,11 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
   const { masterPassphrase, organizationName, pin, enablePinProtection } = form.watch();
 
   // Helper function to generate hash of current credentials
-  const generateCredentialsHash = () => {
-    const passphrase = form.watch('masterPassphrase') || '';
-    const orgName = form.watch('organizationName') || '';
-    const pinValue = form.watch('enablePinProtection') ? form.watch('pin') || '' : '';
-    const pinEnabled = form.watch('enablePinProtection') ? 'enabled' : 'disabled';
-
-    return `${orgName}|${passphrase}|${pinEnabled}|${pinValue}`;
-  };
+  const generateCredentialsHash = useCallback(() => {
+    const pinStatus = enablePinProtection ? 'enabled' : 'disabled';
+    const pinValue = enablePinProtection ? pin || '' : '';
+    return `${organizationName || ''}|${masterPassphrase || ''}|${pinStatus}|${pinValue}`;
+  }, [organizationName, masterPassphrase, enablePinProtection, pin]);
 
   // Check if credentials have changed since last copy
   useEffect(() => {
@@ -146,19 +143,12 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     } else {
       setShowCredentialsWarning(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    masterPassphrase,
-    organizationName,
-    pin,
-    enablePinProtection,
-    isCredentialsCopied,
-    copiedCredentialsHash,
-  ]);
+  }, [generateCredentialsHash, isCredentialsCopied, copiedCredentialsHash]);
 
   const onSubmit = async (data: CreateOrganizationSchemaType) => {
     try {
       if (!isCredentialsCopied) {
+        setShowCredentialsWarning(true);
         toast.error('Please copy the security credentials first');
         return;
       }
@@ -400,7 +390,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     !isGeneratingFingerprint &&
     form.watch('signedUndertaking') &&
     form.formState.isValid &&
-    isCredentialsCopied &&
     !showCredentialsWarning;
 
   return (
@@ -579,8 +568,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  You have updated the security credentials. Please copy them again before creating
-                  the organization.
+                  Please copy the credentials before creating the organization.
                 </AlertDescription>
               </Alert>
             </div>
