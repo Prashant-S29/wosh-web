@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 // Schema
@@ -37,11 +37,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Copy } from 'lucide-react';
+import { Eye, EyeOff, Copy, AlertTriangle } from 'lucide-react';
 import { CreateOrganizationRequest } from '@/types/api/request';
 import { DeviceInfo } from '@/types/encryptions';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface CreateOrganizationFormProps {
   setOpen?: (open: boolean) => void;
@@ -63,6 +64,11 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
   const [deviceConfidence, setDeviceConfidence] = useState<'high' | 'medium' | 'low'>('low');
   const [isGeneratingFingerprint, setIsGeneratingFingerprint] = useState(true);
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>();
+
+  // Credential copy tracking
+  const [isCredentialsCopied, setIsCredentialsCopied] = useState(false);
+  const [copiedCredentialsHash, setCopiedCredentialsHash] = useState<string>('');
+  const [showCredentialsWarning, setShowCredentialsWarning] = useState(false);
 
   // mutation
   const createOrganizationMutation = useTypedMutation<
@@ -87,6 +93,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       enablePinProtection: false,
       signedUndertaking: false,
     },
+    mode: 'onChange',
   });
 
   // Generate device fingerprint
@@ -99,7 +106,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
         setDeviceFingerprint(result.fingerprint);
         setDeviceConfidence(result.confidence);
         setDeviceInfo(result.deviceInfo);
-        // result.deviceInfo.user
 
         if (result.confidence === 'low') {
           toast.warning('Device fingerprinting has low reliability on this device');
@@ -115,8 +121,54 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     generateFingerprint();
   }, []);
 
+  // Watch for credential changes
+  const { masterPassphrase, organizationName, pin, enablePinProtection } = form.watch();
+
+  // Helper function to generate hash of current credentials
+  const generateCredentialsHash = useCallback(() => {
+    const pinStatus = enablePinProtection ? 'enabled' : 'disabled';
+    const pinValue = enablePinProtection ? pin || '' : '';
+    return `${organizationName || ''}|${masterPassphrase || ''}|${pinStatus}|${pinValue}`;
+  }, [organizationName, masterPassphrase, enablePinProtection, pin]);
+
+  // Check if credentials have changed since last copy
+  useEffect(() => {
+    if (!isCredentialsCopied) return;
+
+    const currentHash = generateCredentialsHash();
+
+    if (copiedCredentialsHash !== currentHash) {
+      setShowCredentialsWarning(true);
+      setIsCredentialsCopied(false);
+    } else {
+      setShowCredentialsWarning(false);
+    }
+  }, [generateCredentialsHash, isCredentialsCopied, copiedCredentialsHash]);
+
   const onSubmit = async (data: CreateOrganizationSchemaType) => {
     try {
+      if (!isCredentialsCopied) {
+        setShowCredentialsWarning(true);
+        toast.error('Please copy the security credentials first');
+        return;
+      }
+
+      // Verify credentials haven't changed since copying
+      const currentHash = generateCredentialsHash();
+      if (copiedCredentialsHash !== currentHash) {
+        toast.error('Credentials have changed. Please copy them again before proceeding.');
+        return;
+      }
+
+      // check if pin enabled and no pin provided
+      if (form.watch('enablePinProtection') && !form.watch('pin')) {
+        toast.error('PIN is required for security');
+        form.setError('pin', {
+          message: 'PIN is required for security',
+        });
+        return;
+      }
+
       // Check if secure storage is available
       const storageAvailable = secureStorage.isAvailable();
       if (!storageAvailable.data) {
@@ -275,6 +327,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     const passphrase = randomWords.join('-') + '-' + Math.floor(Math.random() * 1000);
 
     form.setValue('masterPassphrase', passphrase);
+    form.clearErrors('masterPassphrase');
 
     // Copy to clipboard
     const { success } = await copyToClipboard(passphrase);
@@ -290,8 +343,19 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     const passphrase = form.watch('masterPassphrase');
     const orgName = form.watch('organizationName') || 'organization';
 
-    if (!passphrase) {
-      toast.error('No passphrase to copy');
+    // validate the form
+    const isFormValid = await form.trigger();
+    if (!isFormValid) {
+      toast.error('Please fill in all the required fields');
+      return;
+    }
+
+    // check if pin enabled and no pin provided
+    if (form.watch('enablePinProtection') && !form.watch('pin')) {
+      toast.error('PIN is required for security');
+      form.setError('pin', {
+        message: 'PIN is required for security',
+      });
       return;
     }
 
@@ -311,10 +375,22 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
 
     if (success) {
       toast.success('Security credentials copied successfully');
+      const currentHash = generateCredentialsHash();
+      setCopiedCredentialsHash(currentHash);
+      setIsCredentialsCopied(true);
+      setShowCredentialsWarning(false);
     } else {
       toast.error('Failed to copy security credentials');
     }
   };
+
+  // Check if user can create organization
+  const canCreateOrganization =
+    !form.formState.isSubmitting &&
+    !isGeneratingFingerprint &&
+    form.watch('signedUndertaking') &&
+    form.formState.isValid &&
+    !showCredentialsWarning;
 
   return (
     <div className="bg-accent/50 flex w-[700px] flex-col rounded-lg border">
@@ -470,10 +546,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
                   <FormControl>
                     <Checkbox
                       checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        if (checked) copyCredentials();
-                      }}
+                      onCheckedChange={field.onChange}
                       disabled={form.formState.isSubmitting}
                     />
                   </FormControl>
@@ -490,12 +563,25 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
             />
           </div>
 
+          {showCredentialsWarning && (
+            <div className="border-b p-5">
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Please copy the credentials before creating the organization.
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-3 p-5">
             <div>
               {form.watch('signedUndertaking') && (
                 <Button type="button" size="sm" variant="outline" onClick={copyCredentials}>
-                  <Copy className="" />
-                  Copy Security Credentials
+                  <Copy className="mr-2 h-4 w-4" />
+                  {isCredentialsCopied && !showCredentialsWarning
+                    ? 'Credentials Copied'
+                    : 'Copy Security Credentials'}
                 </Button>
               )}
             </div>
@@ -505,20 +591,20 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
                 type="button"
                 variant="secondary"
                 asChild
-                disabled={
-                  form.formState.isSubmitting ||
-                  isGeneratingFingerprint ||
-                  !form.watch('signedUndertaking')
-                }
+                disabled={form.formState.isSubmitting || isGeneratingFingerprint}
               >
                 <Link href="/dashboard">Cancel</Link>
               </Button>
               <Button
                 size="sm"
-                disabled={
-                  form.formState.isSubmitting ||
-                  isGeneratingFingerprint ||
-                  !form.watch('signedUndertaking')
+                disabled={!canCreateOrganization}
+                loading={form.formState.isSubmitting}
+                title={
+                  !isCredentialsCopied
+                    ? 'Please copy the security credentials first'
+                    : showCredentialsWarning
+                      ? 'Credentials have changed. Please copy them again.'
+                      : ''
                 }
               >
                 Create Organization
