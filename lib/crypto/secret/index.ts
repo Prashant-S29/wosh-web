@@ -1,1 +1,1 @@
-export * from "./crypto-utils.generateSecretShareURl"
+export * from './crypto-utils.generateSecretShareURl';
