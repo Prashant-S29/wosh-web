@@ -144,7 +144,7 @@ const Settings: React.FC = () => {
       <div className="flex flex-col gap-2">
         <h1 className="text-lg">Project Details</h1>
         <div className="bg-accent/50 flex flex-col rounded-lg border">
-          <div className="flex w-full justify-between border-b p-5">
+          <div className="flex w-full items-center justify-between border-b p-5">
             <p className="text-sm">Project Name</p>
             {isProjectLoading ? (
               <Skeleton className="h-9 w-[400px]" />
@@ -185,7 +185,7 @@ const Settings: React.FC = () => {
             )}
           </div>
 
-          <div className="flex w-full justify-end gap-4 border-b p-5">
+          <div className="flex w-full justify-end gap-4 p-5">
             <Button
               size="sm"
               variant="secondary"
