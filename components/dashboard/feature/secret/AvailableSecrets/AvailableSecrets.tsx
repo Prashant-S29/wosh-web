@@ -72,7 +72,6 @@ import {
 import { SecretsDeleteDialog } from './SecretsDeleteDialog';
 import { ShareSecretDialog } from './ShareSecretDialog';
 import { useQueryClient } from '@tanstack/react-query';
-import { ProjectKeyCredentials } from '@/hooks/useProjectKey';
 
 const columnHelper = createColumnHelper<Secrets>();
 
@@ -287,7 +286,6 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
   const onAuthenticationSuccess = async (
     projectKey: Uint8Array,
     data: Secrets[] | EditFormData | Secrets | { organizationId: string; projectId: string },
-    credentials: ProjectKeyCredentials,
   ) => {
     try {
       if (operationType === 'export') {
@@ -297,7 +295,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
       } else if (operationType === 'copy') {
         await handleCopyOperation(data as Secrets, projectKey);
       } else if (operationType === 'share') {
-        await handleShareOperation(credentials);
+        await handleShareOperation();
       }
     } catch (error) {
       console.error('Authentication success handler error:', error);
@@ -385,12 +383,10 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
     toast.success('Secret copied to clipboard');
   };
 
-  const handleShareOperation = async (credentials: ProjectKeyCredentials) => {
+  const handleShareOperation = async () => {
     const generateShareTokenAndCodeRes = await generateShareTokenAndCode({
       orgId: organizationId,
       projectId: projectId,
-      masterPassphrase: credentials.masterPassphrase,
-      ...(credentials.pin ? { pin: credentials.pin } : {}),
     });
 
     if (
@@ -578,16 +574,12 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
             type="button"
             size="sm"
             onClick={handleShare}
-            disabled={isAuthenticating || isLoadingSecretSharingCode || isSharingSecret}
+            loading={isSharingSecret}
+            disabled={
+              isAuthenticating || isLoadingSecretSharingCode || isSharingSecret || !hasSecrets
+            }
           >
-            {isSharingSecret ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
-                Sharing...
-              </>
-            ) : (
-              'Share'
-            )}
+            Share
           </Button>
         </div>
       </CardHeader>
@@ -862,7 +854,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
           onClose={closeAuthModal}
           onAuth={(credentials) =>
             handleAuthentication(credentials.credentials, (projectKey, data) =>
-              onAuthenticationSuccess(projectKey, data, credentials.credentials),
+              onAuthenticationSuccess(projectKey, data),
             )
           }
           requiresPin={mkdfConfig?.requiresPin ?? false}
