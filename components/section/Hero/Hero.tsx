@@ -5,7 +5,6 @@ import React from 'react';
 export const Hero: React.FC = () => {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-2">
-
       <h1 className="text-[60px] leading-none font-medium">Manage your secrets</h1>
       <h1 className="text-brand text-[60px] leading-none font-medium">Safe and Securely</h1>
       <p className="mt-3 max-w-[700px] text-center text-lg font-medium">

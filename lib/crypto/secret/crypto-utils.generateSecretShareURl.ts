@@ -9,8 +9,6 @@ const AUTH_TAG_LENGTH = 16;
 interface ShareData {
   organizationId: string;
   projectId: string;
-  masterPassphrase: string;
-  pin?: string;
   timestamp: number;
 }
 
@@ -21,13 +19,9 @@ interface ShareData {
 export async function generateShareTokenAndCode({
   orgId,
   projectId,
-  masterPassphrase,
-  pin,
 }: {
   orgId: string;
   projectId: string;
-  masterPassphrase: string;
-  pin?: string;
 }) {
   try {
     const salt = process.env.SECRET_HASH_SALT;
@@ -43,9 +37,6 @@ export async function generateShareTokenAndCode({
     const data: ShareData = {
       organizationId: orgId,
       projectId: projectId,
-      masterPassphrase,
-      ...(pin ? { pin } : {}),
-
       timestamp: Date.now(),
     };
 

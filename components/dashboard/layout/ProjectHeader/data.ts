@@ -4,6 +4,10 @@ export const projectHeaderData = [
     href: 'overview',
   },
   {
+    label: 'CLI Integration',
+    href: 'cli',
+  },
+  {
     label: 'Logs',
     href: 'logs',
   },
