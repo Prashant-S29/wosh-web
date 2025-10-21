@@ -185,7 +185,12 @@ const CLI: React.FC = () => {
         isOpen={showAuthModal}
         onClose={closeAuthModal}
         onAuth={(credentials) =>
-          handleAuthentication(credentials.credentials, (_, data) => onAuthenticationSuccess(data))
+          handleAuthentication(credentials.credentials, () =>
+            onAuthenticationSuccess({
+              masterPassphrase: credentials.credentials.masterPassphrase,
+              pin: credentials.credentials.pin ?? '',
+            }),
+          )
         }
         requiresPin={mkdfConfig?.requiresPin ?? false}
         isLoading={isAuthenticating || isGenerating}
