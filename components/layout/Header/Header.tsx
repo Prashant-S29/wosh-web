@@ -22,6 +22,12 @@ export const Header: React.FC = () => {
 
   return (
     <header className="fixed z-50 w-full border border-b">
+      <div className="border-b border-amber-400/60 bg-amber-500/10 py-3 text-center">
+        <p className="text-sm font-medium">
+          This project is under development and subject to many breaking changes in future. Please
+          do not use it in production.
+        </p>
+      </div>
       <div className="container mx-auto flex items-center justify-between py-4">
         <div>
           <Link href="/" className="flex items-center gap-2 text-xl font-semibold">
