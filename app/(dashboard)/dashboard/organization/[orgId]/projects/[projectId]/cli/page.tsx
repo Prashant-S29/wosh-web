@@ -3,12 +3,9 @@
 import React, { useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 
-// icons
-import { Terminal } from 'lucide-react';
 
 // components
 import { Container, PageLoader, ResourceHandler } from '@/components/common';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // hooks
 import { useActiveOrg, useActiveProject } from '@/hooks';
