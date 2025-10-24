@@ -1,23 +1,35 @@
 'use server';
 
 import crypto from 'crypto';
+import { encryptKeys } from './generateKeys';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
+const SALT_LENGTH = 32;
 
 interface CLITokenData {
-  masterPassphrase: string;
-  pin?: string;
+  hashKeys: string;
+  orgInfo: { id: string; name: string };
+  projectInfo: { id: string; name: string };
+}
+
+interface GenerateCLITokenResult {
+  data: { token: string } | null;
+  error: string | null;
+  message: string;
 }
 
 export async function generateCLIToken({
   masterPassphrase,
   pin,
+  orgInfo,
+  projectInfo,
 }: {
   masterPassphrase: string;
   pin?: string;
-}) {
+  orgInfo: { id: string; name: string };
+  projectInfo: { id: string; name: string };
+}): Promise<GenerateCLITokenResult> {
   try {
     const cliTokenHash = process.env.CLI_TOKEN_HASH;
 
@@ -30,23 +42,37 @@ export async function generateCLIToken({
       };
     }
 
-    // Prepare the data to encrypt
-    const tokenData: CLITokenData = {
+    const hashKeysResponse = encryptKeys({
       masterPassphrase,
       ...(pin ? { pin } : {}),
+    });
+
+    if (hashKeysResponse.error || !hashKeysResponse.data) {
+      return {
+        data: null,
+        error: hashKeysResponse.error,
+        message: hashKeysResponse.message,
+      };
+    }
+
+    const tokenData: CLITokenData = {
+      hashKeys: hashKeysResponse.data,
+      orgInfo,
+      projectInfo,
     };
 
-    const deterministicSaltSource = `${masterPassphrase}-${pin || 'no-pin'}`;
-    const salt = crypto.createHash('sha256').update(deterministicSaltSource).digest();
+    const salt = crypto.randomBytes(SALT_LENGTH);
+    const iv = crypto.randomBytes(IV_LENGTH);
 
-    const key = crypto.scryptSync(cliTokenHash, salt, 32);
-
-    const ivHash = crypto.createHash('sha256').update(deterministicSaltSource).digest();
-    const iv = ivHash.subarray(0, IV_LENGTH);
+    const key = crypto.scryptSync(cliTokenHash, salt, 32, {
+      N: 16384,
+      r: 8,
+      p: 1,
+      maxmem: 64 * 1024 * 1024,
+    });
 
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-    // Encrypt the token data
     const encrypted = Buffer.concat([
       cipher.update(JSON.stringify(tokenData), 'utf8'),
       cipher.final(),
@@ -54,17 +80,16 @@ export async function generateCLIToken({
 
     const authTag = cipher.getAuthTag();
 
-    const combined = Buffer.concat([encrypted, authTag]);
+    // Combine: salt + iv + encrypted + authTag
+    const combined = Buffer.concat([salt, iv, encrypted, authTag]);
 
+    // Encode as base64url for safe transport
     const token = combined.toString('base64url');
 
     console.log('CLI token generated successfully');
 
     return {
-      data: {
-        token,
-        salt: salt.toString('base64url'),
-      },
+      data: { token },
       error: null,
       message: 'CLI token generated successfully',
     };
@@ -74,112 +99,6 @@ export async function generateCLIToken({
       data: null,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
       message: 'Failed to generate CLI token',
-    };
-  }
-}
-
-export async function decryptCLIToken({
-  token,
-  masterPassphrase,
-  pin,
-}: {
-  token: string;
-  masterPassphrase: string;
-  pin?: string;
-}): Promise<{
-  data: { masterPassphrase: string; pin?: string } | null;
-  error: string | null;
-  message: string;
-}> {
-  try {
-    const cliTokenHash = process.env.CLI_TOKEN_HASH;
-
-    if (!cliTokenHash) {
-      console.error('CRITICAL: CLI_TOKEN_HASH environment variable is not set');
-      return {
-        data: null,
-        error: 'Server configuration error',
-        message: 'Failed to decrypt CLI token',
-      };
-    }
-
-    // Decode the token from URL-safe base64
-    const combined = Buffer.from(token, 'base64url');
-
-    const authTag = combined.subarray(combined.length - AUTH_TAG_LENGTH);
-    const encrypted = combined.subarray(0, combined.length - AUTH_TAG_LENGTH);
-
-    const deterministicSaltSource = `${masterPassphrase}-${pin || 'no-pin'}`;
-    const salt = crypto.createHash('sha256').update(deterministicSaltSource).digest();
-
-    const key = crypto.scryptSync(cliTokenHash, salt, 32);
-
-    const ivHash = crypto.createHash('sha256').update(deterministicSaltSource).digest();
-    const iv = ivHash.subarray(0, IV_LENGTH);
-
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-    decipher.setAuthTag(authTag);
-
-    // Decrypt
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-
-    // Parse JSON
-    const tokenData: CLITokenData = JSON.parse(decrypted.toString('utf8'));
-
-    // Verify the decrypted credentials match what was provided
-    if (tokenData.masterPassphrase !== masterPassphrase || (tokenData.pin || '') !== (pin || '')) {
-      return {
-        data: null,
-        error: 'Authentication failed',
-        message: 'Invalid credentials',
-      };
-    }
-
-    return {
-      data: {
-        masterPassphrase: tokenData.masterPassphrase,
-        pin: tokenData.pin || '',
-      },
-      error: null,
-      message: 'CLI token decrypted successfully',
-    };
-  } catch (error) {
-    console.error('Failed to decrypt CLI token:', error);
-    return {
-      data: null,
-      error: error instanceof Error ? error.message : 'Failed to decrypt CLI token',
-      message: 'Invalid or corrupted CLI token',
-    };
-  }
-}
-
-/**
- * Validates that a CLI token has correct format
- */
-export async function validateCLIToken({ token }: { token: string }): Promise<{
-  valid: boolean;
-  error: string | null;
-}> {
-  try {
-    const cliTokenHash = process.env.CLI_TOKEN_HASH;
-
-    if (!cliTokenHash) {
-      return { valid: false, error: 'Server configuration error' };
-    }
-
-    // Verify token format
-    const combined = Buffer.from(token, 'base64url');
-
-    // Minimum length: 16 (auth tag) + some encrypted data
-    if (combined.length < 16 + 32) {
-      return { valid: false, error: 'Invalid token format' };
-    }
-
-    return { valid: true, error: null };
-  } catch (error) {
-    return {
-      valid: false,
-      error: error instanceof Error ? error.message : 'Validation failed',
     };
   }
 }
