@@ -131,8 +131,6 @@ const CLI: React.FC = () => {
         },
       };
 
-      console.log('dataToEncrypt', dataToEncrypt);
-
       const result = await generateCLIToken(dataToEncrypt);
 
       if (result.error || !result.data) {
