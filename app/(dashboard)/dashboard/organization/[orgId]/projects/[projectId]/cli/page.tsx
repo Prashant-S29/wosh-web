@@ -123,11 +123,11 @@ const CLI: React.FC = () => {
         pin: credentials.pin || '',
         orgInfo: {
           id: organizationId,
-          name: organizationData?.data?.name || '',
+          name: organizationData?.data?.name,
         },
         projectInfo: {
           id: projectId,
-          name: projectData?.data?.name || '',
+          name: projectData?.data?.name,
         },
       };
 
