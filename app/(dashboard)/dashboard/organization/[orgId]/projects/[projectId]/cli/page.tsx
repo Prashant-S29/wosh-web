@@ -183,8 +183,8 @@ const CLI: React.FC = () => {
               <p className="text-sm">CLI Token</p>
               <p className="text-muted-foreground mt-1 max-w-[700px] text-sm">
                 This token securely encrypts your organization and project info, master passphrase
-                and PIN for CLI authentication. It is a deterministic token generated on-demand and
-                never stored on server.
+                and PIN for CLI authentication. It is a non-deterministic token generated on-demand
+                and never stored on server.
               </p>
             </section>
 

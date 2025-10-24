@@ -1,13 +1,14 @@
 'use server';
 
 import crypto from 'crypto';
+import { encryptKeys } from './generateKeys';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
+const SALT_LENGTH = 32;
 
 interface CLITokenData {
-  masterPassphrase: string;
-  pin?: string;
+  hashKeys: string;
   orgInfo: { id: string; name: string };
   projectInfo: { id: string; name: string };
 }
@@ -41,34 +42,37 @@ export async function generateCLIToken({
       };
     }
 
-    // Prepare the data to encrypt
-    const tokenData: CLITokenData = {
+    const hashKeysResponse = encryptKeys({
       masterPassphrase,
       ...(pin ? { pin } : {}),
+    });
+
+    if (hashKeysResponse.error || !hashKeysResponse.data) {
+      return {
+        data: null,
+        error: hashKeysResponse.error,
+        message: hashKeysResponse.message,
+      };
+    }
+
+    const tokenData: CLITokenData = {
+      hashKeys: hashKeysResponse.data,
       orgInfo,
       projectInfo,
     };
 
-    // Create deterministic salt from the token data
-    const saltSource = JSON.stringify({
-      masterPassphrase,
-      pin: pin || '',
-      orgId: orgInfo.id,
-      projectId: projectInfo.id,
+    const salt = crypto.randomBytes(SALT_LENGTH);
+    const iv = crypto.randomBytes(IV_LENGTH);
+
+    const key = crypto.scryptSync(cliTokenHash, salt, 32, {
+      N: 16384,
+      r: 8,
+      p: 1,
+      maxmem: 64 * 1024 * 1024,
     });
-    const salt = crypto.createHash('sha256').update(saltSource).digest();
-
-    // Create deterministic IV from the token data
-    const ivSource = `${saltSource}-iv`;
-    const ivHash = crypto.createHash('sha256').update(ivSource).digest();
-    const iv = ivHash.subarray(0, IV_LENGTH);
-
-    // Derive key from CLI_TOKEN_HASH and salt
-    const key = crypto.scryptSync(cliTokenHash, salt, 32);
 
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
-    // Encrypt the token data
     const encrypted = Buffer.concat([
       cipher.update(JSON.stringify(tokenData), 'utf8'),
       cipher.final(),
