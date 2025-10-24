@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation';
 import { Copy, Check } from 'lucide-react';
 
 // hooks
-import { useActiveOrg, useActiveProject, useCopyToClipboard } from '@/hooks';
+import { useActiveOrg, useActiveProject, useCopyToClipboard, useTypedQuery } from '@/hooks';
 import { useSecretAuthentication } from '@/hooks/useSecretAuthentication';
 import { useMKDFConfig } from '@/hooks/useMKDFConfig';
 
@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { Container, PageLoader, ResourceHandler, SecretAuthModal } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { GetOrganizationResponse, GetProjectResponse } from '@/types/api/response';
 
 const CLI: React.FC = () => {
   const params = useParams();
@@ -31,6 +32,22 @@ const CLI: React.FC = () => {
   );
 
   const [organizationId, projectId] = id;
+
+  // get org info
+  const { data: organizationData, isLoading: isOrganizationLoading } =
+    useTypedQuery<GetOrganizationResponse>({
+      endpoint: `/api/organization/${organizationId}`,
+      queryKey: ['organization', organizationId],
+      enabled: !!organizationId,
+    });
+
+  // get project info
+  const { data: projectData, isLoading: isProjectLoading } = useTypedQuery<GetProjectResponse>({
+    endpoint: `/api/project/${organizationId}/${projectId}`,
+    queryKey: ['project', projectId],
+    enabled: !!projectId,
+  });
+
   const { setActiveProjectId } = useActiveProject();
   const { setActiveOrgId } = useActiveOrg();
 
@@ -91,10 +108,32 @@ const CLI: React.FC = () => {
         return;
       }
 
-      const result = await generateCLIToken({
+      if (!organizationData?.data?.name) {
+        toast.error('Unable to get org info');
+        return;
+      }
+
+      if (!projectData?.data?.name) {
+        toast.error('Unable to get project info');
+        return;
+      }
+
+      const dataToEncrypt = {
         masterPassphrase: credentials.masterPassphrase,
         pin: credentials.pin || '',
-      });
+        orgInfo: {
+          id: organizationId,
+          name: organizationData?.data?.name || '',
+        },
+        projectInfo: {
+          id: projectId,
+          name: projectData?.data?.name || '',
+        },
+      };
+
+      console.log('dataToEncrypt', dataToEncrypt);
+
+      const result = await generateCLIToken(dataToEncrypt);
 
       if (result.error || !result.data) {
         toast.error(result.message || 'Failed to generate CLI token');
@@ -145,8 +184,9 @@ const CLI: React.FC = () => {
             <section>
               <p className="text-sm">CLI Token</p>
               <p className="text-muted-foreground mt-1 max-w-[700px] text-sm">
-                This token securely encrypts your master passphrase and PIN for CLI authentication.
-                It is generated on-demand and never stored on server.
+                This token securely encrypts your organization and project info, master passphrase
+                and PIN for CLI authentication. It is a deterministic token generated on-demand and
+                never stored on server.
               </p>
             </section>
 
@@ -172,7 +212,9 @@ const CLI: React.FC = () => {
                 variant="secondary"
                 loading={isGenerating}
                 onClick={handleRevealToken}
-                disabled={isAuthenticating || isGenerating}
+                disabled={
+                  isAuthenticating || isGenerating || isOrganizationLoading || isProjectLoading
+                }
               >
                 Reveal Token
               </Button>
