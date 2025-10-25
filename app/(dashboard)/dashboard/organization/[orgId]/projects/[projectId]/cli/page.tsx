@@ -20,7 +20,6 @@ import { toast } from 'sonner';
 import { Container, PageLoader, ResourceHandler, SecretAuthModal } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-// import { GetOrganizationResponse, GetProjectResponse } from '@/types/api/response';
 
 const CLI: React.FC = () => {
   const params = useParams();

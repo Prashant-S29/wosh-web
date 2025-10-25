@@ -31,12 +31,7 @@ export async function generateCLIToken({
   pin,
   orgId,
   projectId,
-}: {
-  masterPassphrase: string;
-  pin?: string;
-  orgId: string;
-  projectId: string;
-}): Promise<GenerateCLITokenResult> {
+}: GenerateCLITokenParams): Promise<GenerateCLITokenResult> {
   try {
     const cliTokenHash = process.env.CLI_TOKEN_HASH;
 
