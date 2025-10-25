@@ -7,20 +7,19 @@ import { useParams } from 'next/navigation';
 import { Copy, Check } from 'lucide-react';
 
 // hooks
-import { useActiveOrg, useActiveProject, useCopyToClipboard, useTypedQuery } from '@/hooks';
+import { useActiveOrg, useActiveProject, useCopyToClipboard } from '@/hooks';
 import { useSecretAuthentication } from '@/hooks/useSecretAuthentication';
 import { useMKDFConfig } from '@/hooks/useMKDFConfig';
 
 // utils
 import { useCheckAuthClient } from '@/lib/auth/checkAuthClient';
-import { generateCLIToken } from '@/lib/crypto/cli';
+import { generateCLIToken, GenerateCLITokenParams } from '@/lib/crypto/cli';
 
 // components
 import { toast } from 'sonner';
 import { Container, PageLoader, ResourceHandler, SecretAuthModal } from '@/components/common';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GetOrganizationResponse, GetProjectResponse } from '@/types/api/response';
 
 const CLI: React.FC = () => {
   const params = useParams();
@@ -32,21 +31,6 @@ const CLI: React.FC = () => {
   );
 
   const [organizationId, projectId] = id;
-
-  // get org info
-  const { data: organizationData, isLoading: isOrganizationLoading } =
-    useTypedQuery<GetOrganizationResponse>({
-      endpoint: `/api/organization/${organizationId}`,
-      queryKey: ['organization', organizationId],
-      enabled: !!organizationId,
-    });
-
-  // get project info
-  const { data: projectData, isLoading: isProjectLoading } = useTypedQuery<GetProjectResponse>({
-    endpoint: `/api/project/${organizationId}/${projectId}`,
-    queryKey: ['project', projectId],
-    enabled: !!projectId,
-  });
 
   const { setActiveProjectId } = useActiveProject();
   const { setActiveOrgId } = useActiveOrg();
@@ -108,27 +92,11 @@ const CLI: React.FC = () => {
         return;
       }
 
-      if (!organizationData?.data?.name) {
-        toast.error('Unable to get org info');
-        return;
-      }
-
-      if (!projectData?.data?.name) {
-        toast.error('Unable to get project info');
-        return;
-      }
-
-      const dataToEncrypt = {
+      const dataToEncrypt: GenerateCLITokenParams = {
         masterPassphrase: credentials.masterPassphrase,
         pin: credentials.pin || '',
-        orgInfo: {
-          id: organizationId,
-          name: organizationData?.data?.name,
-        },
-        projectInfo: {
-          id: projectId,
-          name: projectData?.data?.name,
-        },
+        orgId: organizationId,
+        projectId: projectId,
       };
 
       const result = await generateCLIToken(dataToEncrypt);
@@ -210,9 +178,7 @@ const CLI: React.FC = () => {
                 variant="secondary"
                 loading={isGenerating}
                 onClick={handleRevealToken}
-                disabled={
-                  isAuthenticating || isGenerating || isOrganizationLoading || isProjectLoading
-                }
+                disabled={isAuthenticating || isGenerating}
               >
                 Reveal Token
               </Button>
