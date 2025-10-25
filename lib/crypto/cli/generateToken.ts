@@ -9,8 +9,8 @@ const SALT_LENGTH = 32;
 
 interface CLITokenData {
   hashKeys: string;
-  orgInfo: { id: string; name: string };
-  projectInfo: { id: string; name: string };
+  orgId: string;
+  projectId: string;
 }
 
 interface GenerateCLITokenResult {
@@ -19,17 +19,19 @@ interface GenerateCLITokenResult {
   message: string;
 }
 
+export interface GenerateCLITokenParams {
+  masterPassphrase: string;
+  pin?: string;
+  orgId: string;
+  projectId: string;
+}
+
 export async function generateCLIToken({
   masterPassphrase,
   pin,
-  orgInfo,
-  projectInfo,
-}: {
-  masterPassphrase: string;
-  pin?: string;
-  orgInfo: { id: string; name: string };
-  projectInfo: { id: string; name: string };
-}): Promise<GenerateCLITokenResult> {
+  orgId,
+  projectId,
+}: GenerateCLITokenParams): Promise<GenerateCLITokenResult> {
   try {
     const cliTokenHash = process.env.CLI_TOKEN_HASH;
 
@@ -57,8 +59,8 @@ export async function generateCLIToken({
 
     const tokenData: CLITokenData = {
       hashKeys: hashKeysResponse.data,
-      orgInfo,
-      projectInfo,
+      orgId,
+      projectId,
     };
 
     const salt = crypto.randomBytes(SALT_LENGTH);
