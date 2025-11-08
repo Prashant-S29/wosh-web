@@ -43,7 +43,7 @@ import { generateShareTokenAndCode, getShareUrl } from '@/lib/crypto/secret';
 import {
   DeleteSecretResponse,
   GetAllSecretsResponse,
-  GetSecretSharingCodeResponse,
+  // GetSecretSharingCodeResponse,
   Secrets,
   ShareSecretResponse,
   UpdateSecretResponse,
@@ -164,12 +164,11 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
     enabled: !!projectId,
   });
 
-  const { data: secretSharingCodeData, isLoading: isLoadingSecretSharingCode } =
-    useTypedQuery<GetSecretSharingCodeResponse>({
-      endpoint: `/api/project/${organizationId}/${projectId}/secret-sharing-code`,
-      queryKey: ['secret-sharing-code', projectId],
-      enabled: !!projectId,
-    });
+  // const { data: secretSharingCodeData } = useTypedQuery<GetSecretSharingCodeResponse>({
+  //   endpoint: `/api/project/${organizationId}/${projectId}/secret-sharing-code`,
+  //   queryKey: ['secret-sharing-code', projectId],
+  //   enabled: !!projectId,
+  // });
 
   const { mutateAsync: deleteSecret, isPending: isDeletingSecret } = useTypedMutation<
     unknown,
@@ -187,7 +186,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
     method: 'PATCH',
   });
 
-  const { mutateAsync: shareSecret, isPending: isSharingSecret } = useTypedMutation<
+  const { mutateAsync: shareSecret } = useTypedMutation<
     ShareSecretRequest,
     ShareSecretResponse
   >({
@@ -199,7 +198,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
   const pagination = allSecrets?.data?.pagination;
   const hasSecrets = secrets.length > 0;
   const isLoadingData = isLoadingSecrets || isRefetchingSecrets;
-  const existingSharingCode = secretSharingCodeData?.data?.secretSharingCode;
+  // const existingSharingCode = secretSharingCodeData?.data?.secretSharingCode;
 
   const handleExport = (format: 'csv' | 'env') => {
     if (!hasSecrets) {
@@ -271,17 +270,17 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
     openAuthModal(secret);
   };
 
-  const handleShare = async () => {
-    if (existingSharingCode) {
-      const url = await getShareUrl(existingSharingCode);
-      setShareUrl(url);
-      setShareDialogOpen(true);
-      return;
-    }
+  // const handleShare = async () => {
+  //   if (existingSharingCode) {
+  //     const url = await getShareUrl(existingSharingCode);
+  //     setShareUrl(url);
+  //     setShareDialogOpen(true);
+  //     return;
+  //   }
 
-    setOperationType('share');
-    openAuthModal({ organizationId, projectId });
-  };
+  //   setOperationType('share');
+  //   openAuthModal({ organizationId, projectId });
+  // };
 
   const onAuthenticationSuccess = async (
     projectKey: Uint8Array,
