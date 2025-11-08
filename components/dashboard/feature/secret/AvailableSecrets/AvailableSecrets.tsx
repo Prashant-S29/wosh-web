@@ -570,7 +570,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
+          {/* <Button
             type="button"
             size="sm"
             onClick={handleShare}
@@ -580,7 +580,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
             }
           >
             Share
-          </Button>
+          </Button> */}
         </div>
       </CardHeader>
       <CardContent>
