@@ -1,10 +1,22 @@
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+'use client';
+
 import React from 'react';
 
+// components
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { CopyIcon, TerminalIcon } from 'lucide-react';
+import { useCopyToClipboard } from '@/hooks';
+import { toast } from 'sonner';
+
 export const Hero: React.FC = () => {
+  const { copyToClipboard } = useCopyToClipboard();
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-2">
+      <Badge variant="secondary" className="rounded-full px-3 py-1">
+        Beta Testing v1
+      </Badge>
       <h1 className="text-[60px] leading-none font-medium">Manage your secrets</h1>
       <h1 className="text-brand text-[60px] leading-none font-medium">Safe and Securely</h1>
       <p className="mt-3 max-w-[700px] text-center text-lg font-medium">
@@ -12,13 +24,19 @@ export const Hero: React.FC = () => {
         top of browser based cryptography. Share secrets with your team without compromising
         security.
       </p>
-      <div className="mt-5 flex items-center gap-3">
-        <Button variant="default" asChild size="lg">
-          <Link href="/dashboard">Start your project</Link>
+      <div className="relative mt-5 flex items-center gap-3 rounded-lg border px-3 py-2 leading-none duration-100">
+        <TerminalIcon className="text-muted-foreground w-4" />{' '}
+        <p className="font-mono">npm install wosh-cli</p>
+        <Button
+          variant="default"
+          size="icon"
+          onClick={() => {
+            copyToClipboard('npm install wosh-cli');
+            toast.info('Copied to clipboard');
+          }}
+        >
+          <CopyIcon />
         </Button>
-        {/* <Button variant="secondary" asChild size="lg">
-          <Link href="/login">Watch Demo</Link>
-        </Button> */}
       </div>
     </main>
   );
