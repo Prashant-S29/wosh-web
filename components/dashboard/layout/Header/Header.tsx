@@ -65,9 +65,9 @@ export const Header: React.FC = () => {
         </div>
         <div className="flex items-center">
           <div className="flex items-center gap-5">
-            <Button variant="secondary" asChild size="sm">
+            {/* <Button variant="secondary" asChild size="sm">
               <Link href="/feedback">Feedback</Link>
-            </Button>
+            </Button> */}
             {token && <HeaderUserProfile token={token} />}
           </div>
         </div>

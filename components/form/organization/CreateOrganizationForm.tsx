@@ -271,6 +271,9 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       );
       setOpen?.(false);
 
+      // download credentials
+      downloadCredentials(data.organizationName);
+
       // Redirect to organization dashboard
       router.push(`/dashboard/organization/${response.data.id}/projects`);
     } catch (error) {
@@ -334,10 +337,25 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     }
   };
 
-  const copyCredentials = async () => {
+  const generateCredentialsContent = () => {
     const passphrase = form.watch('masterPassphrase');
     const orgName = form.watch('organizationName') || 'organization';
+    const generatedAt = new Date().toISOString();
 
+    let content = `Organization: ${orgName}\nMaster Passphrase: ${passphrase}\n\nSECURITY FEATURES:\n`;
+    content += `- Multi-Factor Key Derivation (MKDF) enabled\n`;
+    content += `- PIN protection: ${form.watch('enablePinProtection') ? 'Enabled' : 'Disabled'}\n`;
+    if (form.watch('enablePinProtection') && form.watch('pin')) {
+      content += `- PIN: ${form.watch('pin')}\n`;
+    }
+    content += `- Device fingerprint confidence: ${deviceConfidence}\n\n`;
+    content += `IMPORTANT: Store this information securely. Once lost, we cannot recover it.\n`;
+    content += `Generated: ${generatedAt}`;
+
+    return content;
+  };
+
+  const copyCredentials = async () => {
     // validate the form
     const isFormValid = await form.trigger();
     if (!isFormValid) {
@@ -354,18 +372,7 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       return;
     }
 
-    const generatedAt = new Date().toISOString();
-
-    let content = `Organization: ${orgName}\nMaster Passphrase: ${passphrase}\n\nSECURITY FEATURES:\n`;
-    content += `- Multi-Factor Key Derivation (MKDF) enabled\n`;
-    content += `- PIN protection: ${form.watch('enablePinProtection') ? 'Enabled' : 'Disabled'}\n`;
-    if (form.watch('enablePinProtection') && form.watch('pin')) {
-      content += `- PIN: ${form.watch('pin')}\n`;
-    }
-    content += `- Device fingerprint confidence: ${deviceConfidence}\n\n`;
-    content += `IMPORTANT: Store this information securely. Once lost, we cannot recover it.\n`;
-    content += `Generated: ${generatedAt}`;
-
+    const content = generateCredentialsContent();
     const { success } = await copyToClipboard(content);
 
     if (success) {
@@ -377,6 +384,25 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
     } else {
       toast.error('Failed to copy security credentials');
     }
+  };
+
+  const downloadCredentials = (organizationName: string) => {
+    const content = generateCredentialsContent();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const filename =
+      process.env.NODE_ENV === 'development'
+        ? `wosh-dev-${organizationName.replace(/\s+/g, '-').toLowerCase()}-${timestamp}-secrets.txt`
+        : `wosh-${organizationName.replace(/\s+/g, '-').toLowerCase()}-${timestamp}-secrets.txt`;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Check if user can create organization
