@@ -18,7 +18,6 @@ import { Logo } from '@/public';
 import { useActiveOrg, useActiveProject } from '@/hooks';
 
 // components
-import { Button } from '@/components/ui/button';
 import { SwitchOrg } from '../SwitchOrg';
 import { SwitchProject } from '../SwitchProject';
 import { ProjectHeader } from '../ProjectHeader';
