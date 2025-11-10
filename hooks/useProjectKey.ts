@@ -65,7 +65,6 @@ export function useProjectKey(
 
       // Generate device fingerprint
       const fingerprintResult = await generateDeviceFingerprint();
-      console.log('fingerprintResult', fingerprintResult);
       if (!fingerprintResult.fingerprint) {
         return {
           data: null,
@@ -78,12 +77,10 @@ export function useProjectKey(
 
       // Get organization keys from local storage
       orgKeys = await secureStorage.getOrgKeysMKDF(organizationId, userId);
-      console.log('orgKeys', orgKeys);
 
       // if organization keys not found locally, get from server
       if (!orgKeys.data) {
         const { data: serverKeysData } = await refetchOrgKeys();
-        console.log('serverKeysData', serverKeysData);
 
         // if keys not found on server
         if (!serverKeysData?.data?.factorConfig) {
@@ -139,7 +136,7 @@ export function useProjectKey(
           console.warn('Failed to store MKDF keys locally:', storeOrgKeysResponse.error);
           toast.warning('Keys retrieved from server but could not be cached locally');
         } else {
-          console.log('Successfully cached MKDF keys locally');
+          console.warn('Successfully cached MKDF keys locally');
         }
       }
 
@@ -182,8 +179,6 @@ export function useProjectKey(
 
       storageKey = storageKeyResult.data;
 
-      console.log('storageKey', storageKey);
-
       let wrappedProjectKeyResult: {
         data: WrappedProjectKey | null;
         error: string | null;
@@ -199,7 +194,6 @@ export function useProjectKey(
       // if project key not found locally, get from the server
       if (!wrappedProjectKeyResult.data) {
         const { data: serverProjectKeysData } = await refetchProjectKeys();
-        console.log('serverProjectKeysData', serverProjectKeysData);
 
         if (!serverProjectKeysData?.data?.wrappedSymmetricKey) {
           return {
@@ -234,8 +228,6 @@ export function useProjectKey(
       // Unwrap project key using organization private key (ALWAYS do this)
       const unwrapResult = await unwrapProjectKey(wrappedProjectKeyResult.data, orgPrivateKey);
 
-      console.log('unwrapResult', unwrapResult);
-
       if (unwrapResult.error || !unwrapResult.data) {
         return {
           data: null,
@@ -245,8 +237,6 @@ export function useProjectKey(
       }
 
       projectKey = unwrapResult.data;
-
-      console.log('projectKey', projectKey);
 
       // Store the key locally for future use (only if it wasn't already stored)
       if (shouldStoreLocally) {
@@ -262,7 +252,6 @@ export function useProjectKey(
           console.warn('Failed to cache project key locally:', storeResult.error);
           // Continue anyway - key recovery succeeded
         } else {
-          console.log('Successfully cached project key locally');
         }
       }
 

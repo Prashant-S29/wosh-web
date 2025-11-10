@@ -99,11 +99,7 @@ export function initWoshDB(): Promise<IDBDatabase> {
                 store.createIndex(index.name, index.keyPath, index.options);
               });
             }
-
-            console.log(`Created store: ${config.name}`);
           });
-
-          console.log('Wosh database schema created successfully');
         } catch (upgradeError) {
           console.error('Database upgrade error:', upgradeError);
           reject({

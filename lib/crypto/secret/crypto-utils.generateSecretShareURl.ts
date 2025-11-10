@@ -64,8 +64,6 @@ export async function generateShareTokenAndCode({
     // get code
     const code = await generateSecretSharingCode({ orgId, projectId });
 
-    console.log('Share token and code generated successfully');
-
     return {
       data: { token, code },
       error: null,

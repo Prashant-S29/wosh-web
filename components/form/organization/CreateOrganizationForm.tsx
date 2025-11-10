@@ -102,7 +102,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
       try {
         setIsGeneratingFingerprint(true);
         const result = await generateDeviceFingerprint();
-        console.log(result);
         setDeviceFingerprint(result.fingerprint);
         setDeviceConfidence(result.confidence);
         setDeviceInfo(result.deviceInfo);
@@ -206,8 +205,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
         return;
       }
 
-      console.log('orgKeys.data', orgKeys.data);
-
       // check is device is correctly registered
       if (
         !orgKeys.data.deviceFingerprint ||
@@ -247,8 +244,6 @@ export const CreateOrganizationForm: React.FC<CreateOrganizationFormProps> = ({ 
           ...(orgKeys.data.pinSalt ? { pinSalt: orgKeys.data.pinSalt } : {}),
         },
       });
-
-      console.log(response);
 
       // invalidate cache
       queryClient.invalidateQueries({

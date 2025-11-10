@@ -68,7 +68,7 @@ export const useCheckAuthClient = ({ redirect = true, redirectTo = '/login' }: A
     }
 
     if (!token) {
-      console.log('No token found');
+      console.warn('No token found');
       setIsAuthenticated(false);
       setIsLoading(false);
 
@@ -83,7 +83,7 @@ export const useCheckAuthClient = ({ redirect = true, redirectTo = '/login' }: A
     }
 
     if (error || !sessionData?.data?.user?.id) {
-      console.log('Session error or no user data:', error);
+      console.error('Session error or no user data:', error);
       setToken(null);
       setIsAuthenticated(false);
       setIsLoading(false);

@@ -88,8 +88,6 @@ export async function generateCLIToken({
     // Encode as base64url for safe transport
     const token = combined.toString('base64url');
 
-    console.log('CLI token generated successfully');
-
     return {
       data: { token },
       error: null,
