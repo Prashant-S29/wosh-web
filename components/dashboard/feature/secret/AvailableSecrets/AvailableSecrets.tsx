@@ -186,10 +186,7 @@ export const AvailableSecrets: React.FC<AvailableSecretsProps> = ({
     method: 'PATCH',
   });
 
-  const { mutateAsync: shareSecret } = useTypedMutation<
-    ShareSecretRequest,
-    ShareSecretResponse
-  >({
+  const { mutateAsync: shareSecret } = useTypedMutation<ShareSecretRequest, ShareSecretResponse>({
     endpoint: `/api/project/${organizationId}/${projectId}/share`,
     method: 'POST',
   });

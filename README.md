@@ -8,7 +8,7 @@
 
 - **Frontend Repo:** https://github.com/Prashant-S29/wosh-web
 - **Backend Repo:** https://github.com/Prashant-S29/wosh-server
-- **Wosh CLI Repo:** (coming soon)
+- **Wosh CLI Repo:** https://github.com/Prashant-S29/wosh-cli
 
 ## Core Security Architecture
 

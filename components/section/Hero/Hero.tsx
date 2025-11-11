@@ -26,12 +26,12 @@ export const Hero: React.FC = () => {
       </p>
       <div className="relative mt-5 flex items-center gap-3 rounded-lg border px-3 py-2 leading-none duration-100">
         <TerminalIcon className="text-muted-foreground w-4" />{' '}
-        <p className="font-mono">npm install wosh-cli</p>
+        <p className="font-mono">npm install wosh</p>
         <Button
           variant="default"
           size="icon"
           onClick={() => {
-            copyToClipboard('npm install wosh-cli');
+            copyToClipboard('npm install wosh');
             toast.info('Copied to clipboard');
           }}
         >
