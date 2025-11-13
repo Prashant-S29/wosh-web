@@ -1,3 +1,6 @@
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/448d0f00-1ae4-48dd-9da1-a8ade38042e5" />
+
+
 # Wosh - Zero Knowledge Secret Management Platform
 
 **A Zero Knowledge and Zero Exposure secret management and sharing platform**
